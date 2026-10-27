@@ -1,0 +1,27 @@
+{
+  "courses": [
+    {"id": "C1", "sections": [
+      {"id": "P1", "lectures": [{"id": "L1", "teachers": ["T1"]}, {"id": "L2", "teachers": ["T1"]}]},
+      {"id": "P2", "lectures": [{"id": "L1", "teachers": ["T1"]}, {"id": "L2", "teachers": ["T1"]}]}
+    ]},
+    {"id": "C2", "sections": [
+      {"id": "P1", "lectures": [{"id": "L1", "teachers": ["T2"]}, {"id": "L2", "teachers": ["T2"]}]},
+      {"id": "P2", "lectures": [{"id": "L1", "teachers": ["T2"]}, {"id": "L2", "teachers": ["T2"]}]}
+    ]},
+    {"id": "C3", "sections": [
+      {"id": "P1", "lectures": [{"id": "L1", "teachers": ["T3"]}]},
+      {"id": "P2", "lectures": [{"id": "L1", "teachers": ["T3"]}]}
+    ]}
+  ],
+  "teachers": [{"id": "T1"}, {"id": "T2"}, {"id": "T3"}],
+  "students": [
+    {"id": "S1", "courses": ["C1", "C2", "C3"]},
+    {"id": "S2", "courses": ["C1", "C2"]},
+    {"id": "S3", "courses": ["C1", "C2", "C3"]},
+    {"id": "S4", "courses": ["C1", "C3"]},
+    {"id": "S5", "courses": ["C2", "C3"]},
+    {"id": "S6", "courses": ["C1", "C2", "C3"]},
+    {"id": "S7", "courses": ["C1", "C2", "C3"]}
+  ],
+  "curricular_levels": [{"id": "Q1", "courses": ["C1", "C2"]}, {"id": "Q2", "courses": ["C3"]}]
+}
