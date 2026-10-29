@@ -106,6 +106,7 @@ def run_grid(args: Namespace) -> dict:
             seed=seed,
             local_search=local_search == "on",
             trace=args.trace,
+            final_ssp=not args.no_final_ssp,
         )
         validate_options(options)
         specification = dict(

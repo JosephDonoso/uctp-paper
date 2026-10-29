@@ -39,6 +39,7 @@ class SolveOptions:
     local_search: bool = True
     total_iteration_limit: int | None = None
     trace: bool = False
+    final_ssp: bool = True
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,7 @@ class SolveResult:
     diagnostics: dict = field(default_factory=dict, compare=False)
     initial_solution: Solution | None = field(default=None, compare=False)
     trace: list[dict] = field(default_factory=list, compare=False)
+    stale_solution: Solution | None = field(default=None, compare=False)
 
 
 def solve(
@@ -141,16 +143,33 @@ def solve(
     else:
         if options.search_blocks > 1:
             reason = "Search-block limit reached."
+    stale_solution = None
+    final_ssp_seconds = 0.0
+    if options.approach == Approach.DECOUPLED and options.final_ssp:
+        # The retained Y was computed by the SSP for the timetable at the start
+        # of its block. Re-solve the SSP on the final timetable so that endpoint
+        # metrics use the same enrollment model as Embedded. This runs after the
+        # search, so it does not change the search trajectory.
+        final_ssp_started = time.perf_counter()
+        stale_solution = best_solution.copy()
+        sectioning.solve(best_solution)
+        final_ssp_seconds = time.perf_counter() - final_ssp_started
     diagnostics = {
         "construction_seconds": construction_seconds,
-        "optimizer_seconds": time.perf_counter() - optimizer_started - capture_seconds,
+        "final_ssp_seconds": final_ssp_seconds,
+        "optimizer_seconds": time.perf_counter()
+        - optimizer_started
+        - capture_seconds
+        - final_ssp_seconds,
         "retries_used": construction._retry_count,
         "construction_attempts": construction._retry_count + 1,
         "completed_iterations": search.completed_iterations,
         "search_blocks_completed": search.search_calls,
         "ssp_calls": sectioning.solve_calls,
     }
-    return SolveResult(best_solution, reason, diagnostics, initial_solution, search.trace)
+    return SolveResult(
+        best_solution, reason, diagnostics, initial_solution, search.trace, stale_solution
+    )
 
 
 def validate_options(options: SolveOptions) -> None:
@@ -180,6 +199,8 @@ def validate_options(options: SolveOptions) -> None:
         raise ValueError("local_search must be boolean.")
     if type(options.trace) is not bool:
         raise ValueError("trace must be boolean.")
+    if type(options.final_ssp) is not bool:
+        raise ValueError("final_ssp must be boolean.")
     if options.total_iteration_limit is not None and (
         type(options.total_iteration_limit) is not int or options.total_iteration_limit < 1
     ):

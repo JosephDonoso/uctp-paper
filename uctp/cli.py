@@ -69,6 +69,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--group", help="Dataset label recorded for analysis.")
     parser.add_argument("--run-id", help="Optional unique identifier for the research run.")
     parser.add_argument(
+        "--no-final-ssp",
+        action="store_true",
+        help="Decoupled: report the block-start Y instead of re-solving the SSP on the final X.",
+    )
+    parser.add_argument(
         "--trace", action="store_true", help="Record native-objective values at accepted TS moves."
     )
     parser.add_argument(
@@ -119,6 +124,7 @@ def main(argv: list[str] | None = None) -> int:
         local_search=args.local_search == "on",
         total_iteration_limit=args.total_iterations,
         trace=args.trace,
+        final_ssp=not args.no_final_ssp,
     )
     try:
         validate_options(options)

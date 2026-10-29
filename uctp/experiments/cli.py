@@ -57,6 +57,11 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--details", action="store_true")
     run.add_argument("--save-solutions", action="store_true")
     run.add_argument(
+        "--no-final-ssp",
+        action="store_true",
+        help="Decoupled: report the block-start Y instead of re-solving the SSP on the final X.",
+    )
+    run.add_argument(
         "--trace", action="store_true", help="Record native objective values at accepted moves."
     )
     run.add_argument("--dry-run", action="store_true")

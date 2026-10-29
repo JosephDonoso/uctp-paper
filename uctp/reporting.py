@@ -42,7 +42,8 @@ def execute_run(
 
     Input errors raise exceptions. Exhausted construction produces a failure
     record with null quality metrics. Extraction runs after optimizer timing;
-    recording never samples random numbers or resolves SSP an extra time.
+    recording never samples random numbers. Decoupled re-solves the SSP on the
+    final timetable inside solve() unless final_ssp is disabled.
     """
     started = time.perf_counter()
     instance = load_instance(
@@ -123,6 +124,11 @@ def execute_run(
         )
         document["initial_solution"] = {key: initial_document[key] for key in ["X", "Y"]}
     document.update(measured)
+    if result.stale_solution is not None:
+        # Decoupled endpoint before the final SSP (the pre-fix reported values).
+        document["stale_metrics"] = measure_solution(
+            instance, result.stale_solution, alpha=options.alpha
+        )["metrics"]
     if options.trace:
         document["trace"] = result.trace
     document.update(
