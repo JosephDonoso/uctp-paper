@@ -1,0 +1,5 @@
+{
+  "Observed": {"F_ref": 13.777, "R_imb": 1.760, "R_dis": 7.828, "conflicts": 201.0},
+  "SSP with LS": {"F_ref": 24.337, "R_imb": 6.189, "R_dis": 3.932, "conflicts": 77.0},
+  "SSP without LS": {"F_ref": 2.617, "R_imb": 0.498, "R_dis": 5.260, "conflicts": 77.0}
+}
