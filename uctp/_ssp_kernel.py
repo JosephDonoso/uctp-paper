@@ -333,3 +333,29 @@ def section_arrays(instance, section_blocks):
             sid += 1
             sb_ptr[sid] = len(flat)
     return sb_ptr, np.array(flat, dtype=np.int64), masks, distinct
+
+
+_WARMED = False
+
+
+def warm_up() -> None:
+    """Compile or load the cached kernels once, outside any timed section."""
+    global _WARMED
+    if _WARMED:
+        return
+    i64 = np.int64
+    mt = np.zeros(_N, dtype=i64)
+    mt[0] = 1
+    pos = np.array([_N], dtype=i64)
+    ptr = np.array([0, 1], dtype=i64)
+    one = np.array([0], dtype=i64)
+    solve_ssp(
+        mt, pos, 1, ptr, one, one, np.array([1], dtype=i64), one,
+        ptr, one, np.array([1], dtype=i64), np.array([True]), 35, 4.0, True,
+        np.empty(1, dtype=i64), np.empty(1, dtype=i64), np.zeros(1, dtype=i64),
+        np.zeros(1, dtype=np.float64),
+    )
+    assignment_costs(
+        1, one, one, ptr, one, 35, 4.0, np.zeros(1, dtype=i64), np.zeros(1, dtype=np.float64)
+    )
+    _WARMED = True

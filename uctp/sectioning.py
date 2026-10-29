@@ -43,6 +43,8 @@ class StudentSectioning:
             index for index, course in enumerate(instance.courses) if len(course.sections) > 1
         )
         self._prepare_kernel_data()
+        if kernel_enabled():
+            _ssp_kernel.warm_up()  # before the optimizer clock starts
 
     def _prepare_kernel_data(self) -> None:
         instance = self.instance
