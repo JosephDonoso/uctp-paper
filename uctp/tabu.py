@@ -1,6 +1,5 @@
 """Relocation Tabu Search with FIFO memory and strict-best aspiration."""
 
-import copy
 import random
 import time
 from dataclasses import dataclass
@@ -70,7 +69,7 @@ class TabuSearch:
         """Replace X and Y with the best evaluated pair; return a stop reason."""
         self.search_calls += 1
         current = _Candidate(solution.copy(), None, self.objective.evaluate(solution))
-        best = copy.deepcopy(current)
+        best = _Candidate(current.solution.copy(), current.move, current.objective)
         iteration_count = 0
         stagnant_count = 0
         failed_count = 0
@@ -96,7 +95,7 @@ class TabuSearch:
             current = selected
             solution.X = selected.solution.X
             if current.objective < best.objective:
-                best = copy.deepcopy(current)
+                best = _Candidate(current.solution.copy(), current.move, current.objective)
                 stagnant_count = 0
             else:
                 stagnant_count += 1

@@ -1,10 +1,23 @@
 """Enrollment-prioritized backtracking and local refinement for the SSP."""
 
+import os
 import random
+
+import numpy as np
 
 from .domain import Instance, Solution, collect_section_blocks
 from .objective import SearchObjective
 from .student_cost import compute_inconvenience_cost
+
+try:  # Optional compiled kernel; results are identical to the Python path.
+    from . import _ssp_kernel
+except ImportError:  # pragma: no cover - depends on the environment
+    _ssp_kernel = None
+
+
+def kernel_enabled() -> bool:
+    """Use the Numba kernel unless unavailable or UCTP_PURE_PYTHON=1."""
+    return _ssp_kernel is not None and os.environ.get("UCTP_PURE_PYTHON", "") != "1"
 
 
 class StudentSectioning:
@@ -29,10 +42,72 @@ class StudentSectioning:
         self._multi_section_courses = frozenset(
             index for index, course in enumerate(instance.courses) if len(course.sections) > 1
         )
+        self._prepare_kernel_data()
+
+    def _prepare_kernel_data(self) -> None:
+        instance = self.instance
+        n_sections = [len(course.sections) for course in instance.courses]
+        self._k_n_sections = np.array(n_sections, dtype=np.int64)
+        self._k_sec_off = np.concatenate(([0], np.cumsum(n_sections)[:-1])).astype(np.int64)
+        self._k_n_sec_total = int(sum(n_sections))
+        pointers, original, ordered = [0], [], []
+        for student in instance.students:
+            courses = list(student.course_indices)
+            original.extend(courses)
+            ordered.extend(sorted(courses, key=lambda c: n_sections[c]))
+            pointers.append(len(original))
+        self._k_stu_ptr = np.array(pointers, dtype=np.int64)
+        self._k_stu_courses = np.array(original, dtype=np.int64)
+        self._k_stu_sorted = np.array(ordered, dtype=np.int64)
+        self._k_slot_student = np.repeat(
+            np.arange(len(instance.students)), np.diff(self._k_stu_ptr)
+        )
+        self._k_n_blocks = len(instance.block_ids)
+        if self._k_n_blocks > 62:
+            raise ValueError("The SSP kernel supports at most 62 blocks.")
+
+    def _solve_kernel(self, solution: Solution) -> float:
+        section_blocks = collect_section_blocks(self.instance, solution.X)
+        total = self._k_n_sec_total
+        sb_ptr, flat, masks, distinct = _ssp_kernel.section_arrays(self.instance, section_blocks)
+        version, internal, gauss = random.getstate()
+        mt = np.fromiter(internal, dtype=np.int64, count=624)
+        pos = np.array([internal[-1]], dtype=np.int64)
+        n_students = len(self.instance.students)
+        assigned = np.empty(len(self._k_stu_courses), dtype=np.int64)
+        order = np.empty(n_students, dtype=np.int64)
+        enrollments = np.zeros(total, dtype=np.int64)
+        costs = np.zeros(n_students, dtype=np.float64)
+        _ssp_kernel.solve_ssp(
+            mt, pos, n_students,
+            self._k_stu_ptr, self._k_stu_courses, self._k_stu_sorted,
+            self._k_n_sections, self._k_sec_off,
+            sb_ptr, flat, masks, distinct,
+            self._k_n_blocks, float(max(0, float(self.idle_tolerance))), self.local_search,
+            assigned, order, enrollments, costs,
+        )
+        random.setstate((version, (*mt.tolist(), int(pos[0])), gauss))
+        solution.Y = dict.fromkeys(
+            zip(
+                self._k_slot_student.tolist(),
+                self._k_stu_courses.tolist(),
+                assigned.tolist(),
+            ),
+            1,
+        )
+        enrollment_map = {}
+        sid = 0
+        for course_index, course in enumerate(self.instance.courses):
+            for section_index in range(len(course.sections)):
+                enrollment_map[course_index, section_index] = int(enrollments[sid])
+                sid += 1
+        return self.objective.evaluate_from_costs(enrollment_map, float(costs.sum()))
 
     def solve(self, solution: Solution) -> float:
         """Replace Y, keep X fixed, and return the internal search objective."""
         self.solve_calls += 1
+        if kernel_enabled():
+            return self._solve_kernel(solution)
         solution.Y = {}
         self._section_blocks = collect_section_blocks(self.instance, solution.X)
         self._section_masks = {}

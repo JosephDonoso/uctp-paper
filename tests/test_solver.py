@@ -70,7 +70,10 @@ class SolverTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertIsNot(first.solution.X, second.solution.X)
 
-    def test_ssp_visits_each_student_once_in_seeded_random_order(self):
+    @patch("uctp.sectioning.kernel_enabled", return_value=False)
+    def test_ssp_visits_each_student_once_in_seeded_random_order(self, _kernel):
+        # Inspects the pure-Python path; the kernel is checked for identical
+        # results in tests/test_ssp_kernel.py.
         instance = parse(sample_data())
         result = solve(instance, SolveOptions(seed=41, iterations_per_search=1))
         original_students = instance.students

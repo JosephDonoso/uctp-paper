@@ -22,6 +22,10 @@ python -m venv .venv
 
 **Verified environment:** package installation and tests have been run on Windows with Python 3.12.13 and NumPy 2.4.6.
 
+### Optional compiled SSP
+
+Installing the `fast` extra (`pip install -e .[fast]`) enables a Numba kernel for the SSP and the fixed-assignment objective. It reproduces the pure-Python solver exactly: same assignments, objective values and random-number state for the same seed (checked by `tests/test_ssp_kernel.py`). The first call compiles the kernel and caches it on disk; run one short warm-up before timed experiments. Set `UCTP_PURE_PYTHON=1` to force the pure-Python path.
+
 ## Solving an instance
 
 Run the included synthetic example with Compatibility Matrix and Embedded:

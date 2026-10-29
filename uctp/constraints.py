@@ -20,6 +20,19 @@ class InstitutionalConstraints:
                         if teacher_index in lecture.teacher_indices:
                             key = course_index, section_index, lecture_index
                             self._teachers_by_lecture.setdefault(key, set()).add(teacher_index)
+        self._teacher_available = [teacher.available_blocks for teacher in instance.teachers]
+        self._teacher_daily = [teacher.max_daily_load for teacher in instance.teachers]
+        self._lecture_info = {}
+        for course_index, course in enumerate(instance.courses):
+            for section_index, section in enumerate(course.sections):
+                for lecture_index in range(len(section.lectures)):
+                    key = course_index, section_index, lecture_index
+                    restriction = (key in instance.distinct_day_lectures) | (
+                        2 * (key in instance.separated_day_lectures)
+                    )
+                    teachers = tuple(sorted(self._teachers_by_lecture.get(key, set())))
+                    if teachers or restriction:
+                        self._lecture_info[key] = (teachers, restriction)
         self.preassignments = {
             (course_index, section_index, lecture_index, lecture.preassigned_block): 1
             for course_index, course in enumerate(instance.courses)
@@ -54,6 +67,73 @@ class InstitutionalConstraints:
         return True
 
     def is_feasible(self, X: Timetable) -> bool:
+        """Check institutional constraints; same verdict as the reference traversal.
+
+        Teacher data are precomputed per lecture and the checks use flat
+        lookups. Every constraint of the reference traversal is still checked,
+        so the returned value is identical for any X.
+        """
+        instance = self.instance
+        protected = instance.protected_blocks
+        max_block_load = instance.max_block_load
+        blocks_per_day = instance.blocks_per_day
+        lecture_info = self._lecture_info
+        teacher_available = self._teacher_available
+        teacher_daily = self._teacher_daily
+        teacher_occupancy = set()
+        daily_loads = {}
+        teacher_days = {}
+        block_loads = {}
+        distinct_days = {}
+        separated_days = {}
+        for key, active in X.items():
+            if active == 0:
+                continue
+            block_index = key[3]
+            if block_index in protected:
+                return False
+            load = block_loads.get(block_index, 0) + 1
+            if load > max_block_load:
+                return False
+            block_loads[block_index] = load
+            day_index = block_index // blocks_per_day
+            teachers, restriction = lecture_info.get(key[:3], ((), 0))
+            if restriction:
+                section_key = key[0], key[1]
+                if restriction & 1:
+                    days = distinct_days.setdefault(section_key, set())
+                    if day_index in days:
+                        return False
+                    days.add(day_index)
+                if restriction & 2:
+                    days = separated_days.setdefault(section_key, set())
+                    if day_index in days:
+                        return False
+                    days.add(day_index)
+            for teacher_index in teachers:
+                if block_index not in teacher_available[teacher_index]:
+                    return False
+                occupancy_key = teacher_index, block_index
+                if occupancy_key in teacher_occupancy:
+                    return False
+                teacher_occupancy.add(occupancy_key)
+                load_key = teacher_index, day_index
+                daily = daily_loads.get(load_key, 0) + 1
+                if daily > teacher_daily[teacher_index]:
+                    return False
+                daily_loads[load_key] = daily
+                teacher_days.setdefault(teacher_index, set()).add(day_index)
+        for teacher_index, days in teacher_days.items():
+            if len(days) > instance.teachers[teacher_index].max_days:
+                return False
+        for days in separated_days.values():
+            ordered_days = sorted(days)
+            for index in range(1, len(ordered_days)):
+                if ordered_days[index] - ordered_days[index - 1] <= 1:
+                    return False
+        return self._preserves_preassignments(X)
+
+    def is_feasible_reference(self, X: Timetable) -> bool:
         """Check institutional constraints in one pass; completeness is separate."""
         teacher_occupancy = set()
         daily_loads = {}
