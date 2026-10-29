@@ -14,6 +14,11 @@ class SearchObjective:
         self.alpha = alpha
         self.cv_tolerance = cv_tolerance
         self.idle_tolerance = idle_tolerance
+        self._requested = frozenset(
+            (student_index, course_index)
+            for student_index, student in enumerate(instance.students)
+            for course_index in set(student.course_indices)
+        )
 
     def evaluate(self, solution: Solution) -> float:
         """Return the scalar required for search, leaving X and Y unchanged."""
@@ -23,15 +28,12 @@ class SearchObjective:
             for course_index, course in enumerate(self.instance.courses)
             for section_index in range(len(course.sections))
         }
-        student_blocks = {}
-        for student_index, student in enumerate(self.instance.students):
-            blocks = []
-            for course_index in student.course_indices:
-                for section_index in range(len(self.instance.courses[course_index].sections)):
-                    if solution.Y.get((student_index, course_index, section_index), 0) == 1:
-                        blocks.extend(section_blocks[course_index, section_index])
-                        enrollments[course_index, section_index] += 1
-            student_blocks[student_index] = blocks
+        requested = self._requested
+        student_blocks = {index: [] for index in range(len(self.instance.students))}
+        for (student_index, course_index, section_index), value in solution.Y.items():
+            if value == 1 and (student_index, course_index) in requested:
+                student_blocks[student_index].extend(section_blocks[course_index, section_index])
+                enrollments[course_index, section_index] += 1
         return self.evaluate_assignment(enrollments, student_blocks)
 
     def evaluate_assignment(

@@ -103,13 +103,12 @@ class Solution:
 
 def collect_section_blocks(instance: Instance, X: Timetable) -> dict[tuple[int, int], list[int]]:
     """Read X in course, section, lecture and block order, preserving duplicates."""
-    section_blocks = {}
-    for course_index, course in enumerate(instance.courses):
-        for section_index, section in enumerate(course.sections):
-            blocks = []
-            for lecture_index in range(len(section.lectures)):
-                for block_index in range(len(instance.block_ids)):
-                    if X.get((course_index, section_index, lecture_index, block_index), 0) == 1:
-                        blocks.append(block_index)
-            section_blocks[course_index, section_index] = blocks
+    section_blocks = {
+        (course_index, section_index): []
+        for course_index, course in enumerate(instance.courses)
+        for section_index in range(len(course.sections))
+    }
+    active = sorted(key for key, value in X.items() if value == 1)
+    for course_index, section_index, _lecture_index, block_index in active:
+        section_blocks[course_index, section_index].append(block_index)
     return section_blocks
