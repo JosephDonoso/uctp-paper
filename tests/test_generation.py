@@ -65,7 +65,7 @@ class GenerationTests(unittest.TestCase):
         import statistics
 
         options = GenerationOptions()
-        self.assertEqual((options.student_load_mean, options.student_load_sd), (3.2, 1.6))
+        self.assertEqual((options.student_load_mean, options.student_load_sd), (3.12, 1.6))
         draws = _sample_counts(50000, 0, 9, 3.2, 1.6, random.Random(703))
         self.assertEqual((min(draws), max(draws)), (0, 9))
         self.assertAlmostEqual(statistics.mean(draws), 3.2, delta=0.15)

@@ -1,0 +1,65 @@
+{
+ "source": "datasets/Real/Semester_2025_1_anonymized.xlsx, columns carrera and anyo of sheet Asignaturas",
+ "levels": {
+  "Q001": {
+   "program": "P001",
+   "year": 1
+  },
+  "Q002": {
+   "program": "P001",
+   "year": 2
+  },
+  "Q003": {
+   "program": "P001",
+   "year": 3
+  },
+  "Q004": {
+   "program": "P001",
+   "year": 4
+  },
+  "Q005": {
+   "program": "P001",
+   "year": 5
+  },
+  "Q006": {
+   "program": "P002",
+   "year": 1
+  },
+  "Q007": {
+   "program": "P002",
+   "year": 2
+  },
+  "Q008": {
+   "program": "P002",
+   "year": 3
+  },
+  "Q009": {
+   "program": "P002",
+   "year": 4
+  },
+  "Q010": {
+   "program": "P002",
+   "year": 5
+  },
+  "Q011": {
+   "program": "P002",
+   "year": 6
+  },
+  "Q012": {
+   "program": "P003",
+   "year": 1
+  },
+  "Q013": {
+   "program": "P003",
+   "year": 2
+  },
+  "Q014": {
+   "program": "P003",
+   "year": 3
+  },
+  "Q015": {
+   "program": "P003",
+   "year": 4
+  }
+ }
+}

@@ -14,7 +14,7 @@ fixed curricular sampling SD assigned to its dataset group.
 Courses are selected without duplicates. Zero-load students remain in the data.
 
 Teacher availability is sampled separately for each weekly block with
-probability 0.7 of being available. If no block is available on a day, one
+probability 0.66 of being available. If no block is available on a day, one
 block is chosen randomly and made available.
 
 Teachers are assigned per section. Each section receives one teacher, or two
@@ -42,3 +42,20 @@ require zero student conflicts or guarantee success for every later seed.
 
 Preserve the command and printed candidate seeds to reproduce generated data.
 Use `--max-candidates` to bound generation effort.
+
+## Calibration to the institutional instance
+
+The default parameters calibrate BASE to the institutional instance
+(`datasets/Real/real.json`) by matching expected values: the student-load mean
+(3.12) gives 3.169 requested courses per student; the section-count location
+(1.17, SD 0.8) gives 1.486 sections per course; the weekly-lecture mean (2.59)
+gives 2.683 lectures per section; the availability probability (0.66) gives
+34.0 % unavailable teacher blocks; and the curricular sampling SD (0.31)
+reproduces the mean within-student SD of requested curricular levels (0.187;
+institutional levels are curricular years within the student's program,
+`tools/real_curricular_levels.json`). The teacher-load parameters reproduce the
+institutional weekly blocks per teacher. Offer-Low and Offer-High use section
+locations 0.36 and 1.64, which give 20 % fewer and more expected sections per
+course than BASE; Dispersion-Low and Dispersion-High use half and 1.5 times the
+BASE curricular SD (0.155 and 0.465). `tools/input_descriptives.py` reports the
+resulting comparison.

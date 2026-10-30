@@ -1,0 +1,55 @@
+dataset,measure,n,mean,sd,min,max
+Real,Requested courses per student,1209,3.1687344913151363,1.5582375793898555,0.0,9.0
+Real,Sections per course,70,1.4857142857142858,0.8407965125464093,1.0,4.0
+Real,Weekly lectures per section,104,2.6826923076923075,0.6543408761865032,1.0,4.0
+Real,Weekly lectures per course (all sections),70,3.9857142857142858,2.399362160139691,1.0,12.0
+Real,File-recorded preassigned lectures (\%),1,8.960573476702509,0.0,8.960573476702509,8.960573476702509
+Real,File-recorded courses with preassignments (\%),1,8.571428571428571,0.0,8.571428571428571,8.571428571428571
+Real,Unavailable teacher blocks (\%),48,33.98809523809524,14.583090376984934,17.142857142857142,85.71428571428571
+Real,Weekly blocks per teacher,48,4.666666666666667,2.502776236280201,2.0,13.0
+Real,Within-student SD of requested curricular levels,1039,0.18701718881267115,0.2788827737267284,0.0,1.699673171197595
+BASE,Requested courses per student,25000,3.17864,1.565224504791565,0.0,9.0
+BASE,Sections per course,1500,1.4973333333333334,0.624494106368418,1.0,4.0
+BASE,Weekly lectures per section,2246,2.6731967943009796,0.6323592368036111,2.0,4.0
+BASE,Weekly lectures per course (all sections),1500,4.002666666666666,1.9646864607078882,2.0,12.0
+BASE,File-recorded preassigned lectures (\%),50,8.988759482838542,5.391142730528,0.0,25.892857142857142
+BASE,File-recorded courses with preassignments (\%),50,9.266666666666667,4.632733774157784,0.0,20.0
+BASE,Unavailable teacher blocks (\%),1429,33.773867839648105,7.966647086977244,11.428571428571429,60.0
+BASE,Weekly blocks per teacher,1429,4.555633310006998,2.23572794911621,2.0,12.0
+BASE,Within-student SD of requested curricular levels,21403,0.18251698138619168,0.23087814543195528,0.0,1.0
+Dispersion-Low,Requested courses per student,25000,3.19704,1.5564238620632878,0.0,9.0
+Dispersion-Low,Sections per course,1500,1.4973333333333334,0.624494106368418,1.0,4.0
+Dispersion-Low,Weekly lectures per section,2246,2.6731967943009796,0.6323592368036111,2.0,4.0
+Dispersion-Low,Weekly lectures per course (all sections),1500,4.002666666666666,1.9646864607078882,2.0,12.0
+Dispersion-Low,File-recorded preassigned lectures (\%),50,8.988759482838542,5.391142730528,0.0,25.892857142857142
+Dispersion-Low,File-recorded courses with preassignments (\%),50,9.266666666666667,4.632733774157784,0.0,20.0
+Dispersion-Low,Unavailable teacher blocks (\%),1429,33.773867839648105,7.966647086977244,11.428571428571429,60.0
+Dispersion-Low,Weekly blocks per teacher,1429,4.555633310006998,2.23572794911621,2.0,12.0
+Dispersion-Low,Within-student SD of requested curricular levels,21501,0.06902651846886329,0.1636322519647815,0.0,0.5
+Dispersion-High,Requested courses per student,25000,3.17652,1.5596924984111449,0.0,9.0
+Dispersion-High,Sections per course,1500,1.4973333333333334,0.624494106368418,1.0,4.0
+Dispersion-High,Weekly lectures per section,2246,2.6731967943009796,0.6323592368036111,2.0,4.0
+Dispersion-High,Weekly lectures per course (all sections),1500,4.002666666666666,1.9646864607078882,2.0,12.0
+Dispersion-High,File-recorded preassigned lectures (\%),50,8.988759482838542,5.391142730528,0.0,25.892857142857142
+Dispersion-High,File-recorded courses with preassignments (\%),50,9.266666666666667,4.632733774157784,0.0,20.0
+Dispersion-High,Unavailable teacher blocks (\%),1429,33.773867839648105,7.966647086977244,11.428571428571429,60.0
+Dispersion-High,Weekly blocks per teacher,1429,4.555633310006998,2.23572794911621,2.0,12.0
+Dispersion-High,Within-student SD of requested curricular levels,21483,0.32631573864803487,0.2623647107872905,0.0,1.5
+Offer-Low,Requested courses per student,25000,3.16092,1.5623267115427553,0.0,9.0
+Offer-Low,Sections per course,1500,1.1873333333333334,0.4085415795512401,1.0,3.0
+Offer-Low,Weekly lectures per section,1781,2.698483997754071,0.6433200603531211,2.0,4.0
+Offer-Low,Weekly lectures per course (all sections),1500,3.204,1.3690814438885657,2.0,12.0
+Offer-Low,File-recorded preassigned lectures (\%),50,9.527176707208897,5.866921895134089,0.0,26.96629213483146
+Offer-Low,File-recorded courses with preassignments (\%),50,10.133333333333333,5.848456586523016,0.0,26.666666666666668
+Offer-Low,Unavailable teacher blocks (\%),1149,33.63421608852418,7.876535071363201,11.428571428571429,60.0
+Offer-Low,Weekly blocks per teacher,1149,4.48041775456919,2.1393591598567996,2.0,12.0
+Offer-Low,Within-student SD of requested curricular levels,21335,0.17978310261733058,0.230560836969569,0.0,1.0
+Offer-High,Requested courses per student,25000,3.16276,1.5690344745734555,0.0,9.0
+Offer-High,Sections per course,1500,1.8006666666666666,0.7318466748954698,1.0,4.0
+Offer-High,Weekly lectures per section,2701,2.6819696408737506,0.6363690275686198,2.0,4.0
+Offer-High,Weekly lectures per course (all sections),1500,4.8293333333333335,2.318952253832656,2.0,16.0
+Offer-High,File-recorded preassigned lectures (\%),50,10.34026294136898,5.9490858910051285,0.0,25.414364640883978
+Offer-High,File-recorded courses with preassignments (\%),50,9.933333333333334,5.476819839610899,0.0,26.666666666666668
+Offer-High,Unavailable teacher blocks (\%),1648,34.08113730929265,7.750681777432723,11.428571428571429,60.0
+Offer-High,Weekly blocks per teacher,1648,4.772451456310679,2.3256783768810454,2.0,12.0
+Offer-High,Within-student SD of requested curricular levels,21297,0.1786343868977312,0.22935554926883647,0.0,1.0

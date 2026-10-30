@@ -138,19 +138,22 @@ Read the generated files with `--input-format legacy`:
 | `--shared-teacher-probability` | `0.5`, probability that a section reuses the preceding section's staff |
 | `--max-daily-load` | `4` blocks per teacher per day |
 | `--courses-per-level` | `4 6 6 6 6 2` |
-| `--student-load-mean`, `--student-load-sd` | `3.2`, `1.6`, before rounding/truncation to 0–9 |
+| `--student-load-mean`, `--student-load-sd` | `3.12`, `1.6`, before rounding/truncation to 0–9 |
 | `--section-sd` | `0.8`, before rounding/truncation to 1–4 sections |
-| `--weekly-lectures-mean`, `--weekly-lectures-sd` | `2.7`, `0.7`, before rounding/truncation to 2–4 lectures |
+| `--weekly-lectures-mean`, `--weekly-lectures-sd` | `2.59`, `0.7`, before rounding/truncation to 2–4 lectures |
 | `--level-decay` | `0.85` |
-| `--teacher-availability` | `0.7`, probability that a block is available |
+| `--teacher-availability` | `0.66`, probability that a block is available |
 | `--preassignment-probability` | `0.10`, whole-course preassignment attempt probability |
 
 Every student uses the curricular sampling SD of its group; there is no individual SD draw.
 Teacher availability is drawn per block, with at least one available block retained per day.
 
-Curricular sampling SD is **0.4 / 0.8 / 1.2** for Dispersion-Low / BASE /
-Dispersion-High, and 0.8 for both offer groups. Section-count means are
-1.5, except Offer-Low (1.2) and Offer-High (1.8). Each course's sections
+BASE is calibrated to the institutional instance (`tools/input_descriptives.py`
+reports the comparison). Curricular sampling SD is **0.155 / 0.31 / 0.465** for
+Dispersion-Low / BASE / Dispersion-High, and 0.31 for both offer groups.
+Section-count normal locations are 1.17 (expected 1.486 sections per course, as
+in the institutional instance), except Offer-Low (0.36) and Offer-High (1.64),
+which give 20 % fewer and more expected sections per course. Each course's sections
 share its weekly lecture count. Teachers are assigned per section (one, or two with probability 0.07), with heterogeneous target weekly loads of at most 12 lectures; the number of teachers follows from the teaching demand. Every teacher uses the institutional daily limit of 4 blocks, as in the real instance. Complete construction feasibility is required.
 
 Before saving an instance, construction tries Prioritization Only,

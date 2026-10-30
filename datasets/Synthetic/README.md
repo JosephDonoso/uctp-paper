@@ -12,7 +12,8 @@ They were produced with the repository generator and default parameters:
 Running the command again reproduces the files byte for byte; `SHA256SUMS`
 lists their checksums (paths relative to `Synthetic/`) and `generation_log.txt`
 the console output, including the candidate seed of every saved instance and
-the number of candidates tested per group.
+the number of candidates tested per group; `input_descriptives.csv` compares
+the groups with the institutional instance (`tools/input_descriptives.py`).
 
 Read the files with `--input-format legacy`. Within one instance number, the
 Dispersion-Low, BASE and Dispersion-High instances share the candidate seed and

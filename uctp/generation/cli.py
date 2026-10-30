@@ -175,12 +175,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--teacher-availability",
         type=float,
-        help="Probability that a block is available; default: 0.7. At least one block per day is retained.",
+        help="Probability that a block is available; default: 0.66. At least one block per day is retained.",
     )
     parser.add_argument(
         "--student-load-mean",
         type=float,
-        help="Normal mean before rounding/truncation to 0-9 courses; default: 3.2.",
+        help="Normal mean before rounding/truncation to 0-9 courses; default: 3.12.",
     )
     parser.add_argument(
         "--student-load-sd",
@@ -196,8 +196,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--weekly-lectures-mean",
         type=float,
-        default=2.7,
-        help="Weekly lecture-count normal mean; default: 2.7.",
+        default=2.59,
+        help="Weekly lecture-count normal mean; default: 2.59.",
     )
     parser.add_argument(
         "--weekly-lectures-sd",
@@ -251,9 +251,9 @@ def main(argv: list[str] | None = None) -> int:
             level_decay=args.level_decay,
             availability_probability=args.teacher_availability
             if args.teacher_availability is not None
-            else 0.7,
+            else 0.66,
             preassignment_probability=args.preassignment_probability,
-            student_load_mean=args.student_load_mean if args.student_load_mean is not None else 3.2,
+            student_load_mean=args.student_load_mean if args.student_load_mean is not None else 3.12,
             student_load_sd=args.student_load_sd if args.student_load_sd is not None else 1.6,
         )
         try:

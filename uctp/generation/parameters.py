@@ -15,12 +15,18 @@ class DatasetGroup(StrEnum):
     OFFER_HIGH = "Offer-High"
 
 
+# (section-count normal location, curricular sampling SD, group index).
+# BASE is calibrated to the institutional instance: its location gives an
+# expected 1.486 sections per course (section SD 0.8) and its curricular SD
+# reproduces the mean within-student SD of requested levels (0.187). Offer-Low
+# and Offer-High give 20 % fewer and more expected sections per course than
+# BASE; Dispersion-Low and Dispersion-High use half and 1.5 times its SD.
 GROUP_PARAMETERS = {
-    DatasetGroup.DISPERSION_LOW: (1.5, 0.4, 0),
-    DatasetGroup.BASE: (1.5, 0.8, 1),
-    DatasetGroup.DISPERSION_HIGH: (1.5, 1.2, 2),
-    DatasetGroup.OFFER_LOW: (1.2, 0.8, 3),
-    DatasetGroup.OFFER_HIGH: (1.8, 0.8, 5),
+    DatasetGroup.DISPERSION_LOW: (1.17, 0.155, 0),
+    DatasetGroup.BASE: (1.17, 0.31, 1),
+    DatasetGroup.DISPERSION_HIGH: (1.17, 0.465, 2),
+    DatasetGroup.OFFER_LOW: (0.36, 0.31, 3),
+    DatasetGroup.OFFER_HIGH: (1.64, 0.31, 5),
 }
 
 
@@ -46,15 +52,15 @@ class GenerationOptions:
     shared_teacher_probability: float = 0.5
     max_daily_load: int = 4
     student_count: int = 500
-    section_mean: float = 1.5
+    section_mean: float = 1.17
     section_sd: float = 0.8
-    weekly_lectures_mean: float = 2.7
+    weekly_lectures_mean: float = 2.59
     weekly_lectures_sd: float = 0.7
-    curricular_sampling_sd: float = 0.8
+    curricular_sampling_sd: float = 0.31
     level_decay: float = 0.85
-    availability_probability: float = 0.7
+    availability_probability: float = 0.66
     preassignment_probability: float = 0.10
-    student_load_mean: float = 3.2
+    student_load_mean: float = 3.12
     student_load_sd: float = 1.6
 
     def validate(self) -> None:
@@ -87,8 +93,8 @@ class GenerationOptions:
             raise ValueError("max_daily_load must be a positive integer.")
         if type(self.student_count) is not int or self.student_count < 1:
             raise ValueError("student_count must be a positive integer.")
-        if not math.isfinite(self.section_mean) or not 1 <= self.section_mean <= 4:
-            raise ValueError("section_mean must be finite and between one and four.")
+        if not math.isfinite(self.section_mean) or not 0 <= self.section_mean <= 4:
+            raise ValueError("section_mean must be finite and between zero and four.")
         if not math.isfinite(self.section_sd) or self.section_sd < 0:
             raise ValueError("section_sd must be finite and nonnegative.")
         if not math.isfinite(self.weekly_lectures_mean) or not 2 <= self.weekly_lectures_mean <= 4:
