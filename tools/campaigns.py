@@ -621,7 +621,7 @@ def write_plan(results: Path, stages: list[Stage], workers: int, budget: int) ->
 # ----------------------------------------------------------------------------- commands
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("command", choices=["plan", "run", "status", "merge", "validate", "package"])
+    parser.add_argument("command", choices=["plan", "concurrency", "run", "status", "merge", "validate", "package"])
     parser.add_argument("--results", type=Path, default=ROOT / "results")
     parser.add_argument("--data", type=Path, default=ROOT / "work" / "Synthetic",
                         help="Folder where the bundled synthetic datasets are extracted.")
@@ -632,6 +632,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--iteration-budget", type=int, help="Override the pilot's recommended budget.")
     parser.add_argument("--skip-concurrency-pilot", action="store_true")
     parser.add_argument("--concurrency-seconds", type=int, default=30)
+    parser.add_argument("--force", action="store_true",
+                        help="concurrency: repeat the test even if a result already exists.")
     parser.add_argument("--smoke", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args.smoke:
@@ -656,6 +658,20 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "plan":
         write_plan(results, build_stages(results, data, budget), workers, budget)
+        return 0
+    if args.command == "concurrency":
+        environment(results, workers)
+        if args.force and concurrency.is_file():
+            concurrency.unlink()
+        result = pilot_concurrency(results, workers, 3 if SMOKE else args.concurrency_seconds,
+                                   [1, 2] if SMOKE else [1, 4, 6])
+        print("\nProcesses  Mean iterations  Loss vs alone")
+        for row in result["rows"]:
+            print(f"{row['processes']:9d}  {row['mean']:15.0f}  {row['loss_percent']:12.1f} %")
+        chosen = min(result["recommended_workers"], 4)
+        print(f"\nUp to {result['recommended_workers']} processes lose at most {result['threshold_percent']} %; "
+              f"run_experiments will use {chosen} workers (override with -Workers). "
+              f"Saved in {concurrency}.")
         return 0
     if args.command == "status":
         for row in status_rows(stages):

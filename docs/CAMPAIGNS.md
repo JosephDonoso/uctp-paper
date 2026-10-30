@@ -32,7 +32,8 @@ Order within the first session:
 2. Concurrency pilot: the same 30-second real-instance run alone and with 4 and
    6 simultaneous copies (`results/01_pilot_concurrency`). Keep the computer
    otherwise idle. Up to four workers are used if their loss of iterations is at
-   most 15 %.
+   most 15 %. It can also be run on its own beforehand with
+   `tools\concurrency_test.ps1` (`-Force` repeats it); the saved result is reused.
 3. Convergence pilot: 6 independent instances per group (generator seed 5001),
    R/PO/CM, alpha 0.5/1/2, 3000 iterations with checkpoints; it recommends the
    maximum iteration budget for campaign B (`results/02_pilot_convergence`).
