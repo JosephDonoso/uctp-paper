@@ -195,6 +195,17 @@ The result contains `X` (lectures, time blocks, and teachers), `Y` (students, co
 
 The program refuses to overwrite an existing destination. Exit codes are `0` for a solved instance, `1` for exhausted construction attempts or incompatible preassignments, and `2` for invalid arguments or input. Construction failures are written as result records with null quality metrics and empty assignments. Unavoidable student conflicts do not imply an infeasible institutional timetable.
 
+## Reproducing the article's experiments
+
+`tools/campaigns.py` reruns every experiment of the manuscript from scratch, in
+parallel and resumably, in sessions of at most eight hours; see
+[docs/CAMPAIGNS.md](docs/CAMPAIGNS.md). On Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\setup_windows.ps1
+powershell -ExecutionPolicy Bypass -File tools\run_experiments.ps1
+```
+
 ## Experiments and general analysis
 
 Run any combination of instances, initializers, approaches, weights, seeds, LS ablations and budgets through `uctp.experiments`. For example, a small iteration-budget experiment:

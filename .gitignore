@@ -16,3 +16,7 @@ Thumbs.db
 *.tmp
 *.bak
 AGENTS.md
+results/
+results_smoke/
+work/
+results_package_*.zip
