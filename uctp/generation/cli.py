@@ -67,55 +67,28 @@ def _accept_candidate(data: dict, *, group_index: int, seed: int, retries: int) 
     return False
 
 
-def _maximum_weekly_load(data: dict) -> int:
-    """Count all weekly lectures assigned to each course teacher."""
-    loads = Counter(
-        teacher
-        for course in data["eventos"]["asignaturas"]
-        for section in course["paralelos"]
-        for _ in section["clases"]
-        for teacher in section["maestros"]
-    )
-    return max(loads.values())
-
-
 def _generate_group(
     options: GenerationOptions, *, group: str, group_index: int,
     count: int, seed: int, retries: int, max_candidates: int | None,
 ) -> list[tuple[int, dict]] | None:
-    """Settle the shared limit and validate every final group member.
+    """Test consecutive candidate seeds until ``count`` instances are accepted.
 
-    Failed candidates are replaced with subsequent seeds. Any change in the
-    group maximum triggers validation under the newly derived limit. Only a
-    complete, consistently validated group is returned for saving.
+    Every candidate uses the institutional daily teacher limit stored in its
+    data. Rejected candidates are skipped. Only a complete group is returned.
     """
-    candidates: list[tuple[int, dict, int]] = []
+    accepted: list[tuple[int, dict]] = []
     tested = 0
-    checks: dict[tuple[int, int], bool] = {}
-    while True:
-        while len(candidates) < count:
-            if max_candidates is not None and tested >= max_candidates:
-                print(f"Candidate limit reached: {group}; current group not saved.", flush=True)
-                return None
-            candidate_seed = seed + tested
-            tested += 1
-            data = generate_instance(options, seed=candidate_seed)
-            candidates.append((candidate_seed, data, _maximum_weekly_load(data)))
-        daily_limit = max(load for _, _, load in candidates) // 3 + 1
-        print(f"Checking {group}: {len(candidates)} candidates, daily limit {daily_limit}.", flush=True)
-        successful = []
-        for candidate_seed, data, load in candidates:
-            data["restricciones"]["MAX_CARGA_DIARIA"] = daily_limit
-            key = candidate_seed, daily_limit
-            if key not in checks:
-                checks[key] = _accept_candidate(
-                    data, group_index=group_index, seed=candidate_seed, retries=retries
-                )
-            if checks[key]:
-                successful.append((candidate_seed, data, load))
-        if len(successful) == count:
-            return [(candidate_seed, data) for candidate_seed, data, _ in successful]
-        candidates = successful
+    while len(accepted) < count:
+        if max_candidates is not None and tested >= max_candidates:
+            print(f"Candidate limit reached: {group}; current group not saved.", flush=True)
+            return None
+        candidate_seed = seed + tested
+        tested += 1
+        data = generate_instance(options, seed=candidate_seed)
+        if _accept_candidate(data, group_index=group_index, seed=candidate_seed, retries=retries):
+            accepted.append((candidate_seed, data))
+    print(f"{group}: {count} instances accepted from {tested} candidates.", flush=True)
+    return accepted
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -148,7 +121,40 @@ def _build_parser() -> argparse.ArgumentParser:
         "--max-candidates", type=int, help="Optional cap on candidate seeds tested per group."
     )
     parser.add_argument(
-        "--teachers", type=int, default=20, help="Teachers per instance; default: 20."
+        "--teacher-load-mean",
+        type=float,
+        default=2.0,
+        help="Normal location of teacher target weekly loads before rounding/truncation to 2-max; default: 2.0.",
+    )
+    parser.add_argument(
+        "--teacher-load-sd",
+        type=float,
+        default=3.25,
+        help="Normal scale of teacher target weekly loads; default: 3.25.",
+    )
+    parser.add_argument(
+        "--teacher-max-load",
+        type=int,
+        default=12,
+        help="Maximum weekly lectures per teacher; default: 12.",
+    )
+    parser.add_argument(
+        "--co-teaching-probability",
+        type=float,
+        default=0.07,
+        help="Probability that a section has two teachers; default: 0.07.",
+    )
+    parser.add_argument(
+        "--shared-teacher-probability",
+        type=float,
+        default=0.5,
+        help="Probability that a section reuses the preceding section's staff; default: 0.5.",
+    )
+    parser.add_argument(
+        "--max-daily-load",
+        type=int,
+        default=4,
+        help="Institutional daily teacher limit in time blocks; default: 4.",
     )
     parser.add_argument(
         "--students", type=int, default=500, help="Students per instance; default: 500."
@@ -230,7 +236,12 @@ def main(argv: list[str] | None = None) -> int:
         section_mean, sampling_sd, group_index = GROUP_PARAMETERS[group]
         options = GenerationOptions(
             courses_per_level=tuple(args.courses_per_level),
-            teacher_count=args.teachers,
+            teacher_load_mean=args.teacher_load_mean,
+            teacher_load_sd=args.teacher_load_sd,
+            teacher_max_load=args.teacher_max_load,
+            co_teaching_probability=args.co_teaching_probability,
+            shared_teacher_probability=args.shared_teacher_probability,
+            max_daily_load=args.max_daily_load,
             student_count=args.students,
             section_mean=section_mean,
             section_sd=args.section_sd,

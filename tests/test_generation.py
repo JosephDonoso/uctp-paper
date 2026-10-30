@@ -116,27 +116,22 @@ class GenerationTests(unittest.TestCase):
             self.assertNotIn("metadatos", data)
             self.assertTrue(all(not student["asignaturas"] for student in data["recursos"]["estudiantes"]))
 
-    def test_course_staffing_and_preassignments(self):
+    def test_section_staffing_and_preassignments(self):
         sizes = Counter()
         for seed in range(40):
             options = GenerationOptions(student_count=20, preassignment_probability=1)
             data = generate_instance(options, seed=seed)
             instance = parse_instance(
-                convert_legacy_instance(data), max_daily_load=8, max_block_load=15
+                convert_legacy_instance(data), max_daily_load=data["restricciones"]["MAX_CARGA_DIARIA"], max_block_load=15
             )
             self.assertTrue(
                 all(not any(key.startswith("_") for key in t) for t in data["recursos"]["maestros"])
             )
-            teacher_courses = Counter()
             for course in data["eventos"]["asignaturas"]:
-                staff = course["paralelos"][0]["maestros"]
-                self.assertTrue(1 <= len(staff) <= 2)
-                teacher_courses.update(staff)
                 for section in course["paralelos"]:
-                    self.assertEqual(section["maestros"], staff)
+                    self.assertTrue(1 <= len(section["maestros"]) <= 2)
+                    self.assertEqual(len(section["maestros"]), len(set(section["maestros"])))
                     self.assertTrue(all("maestros" not in lecture for lecture in section["clases"]))
-            self.assertEqual(len(teacher_courses), options.teacher_count)
-            self.assertTrue(all(1 <= n <= 4 for n in teacher_courses.values()))
             weekly = Counter(
                 teacher
                 for course in data["eventos"]["asignaturas"]
@@ -144,10 +139,24 @@ class GenerationTests(unittest.TestCase):
                 for _ in section["clases"]
                 for teacher in section["maestros"]
             )
-            expected = max(weekly.values()) // 3 + 1
-            self.assertEqual(data["restricciones"]["MAX_CARGA_DIARIA"], expected)
-            self.assertEqual({t.max_daily_load for t in instance.teachers}, {expected})
+            self.assertEqual(set(weekly), {t["nombre"] for t in data["recursos"]["maestros"]})
+            self.assertTrue(all(2 <= n <= options.teacher_max_load for n in weekly.values()))
+            self.assertEqual(data["restricciones"]["MAX_CARGA_DIARIA"], options.max_daily_load)
+            self.assertEqual({t.max_daily_load for t in instance.teachers}, {options.max_daily_load})
             self.assertTrue(all("max_daily_load" not in t for t in data["recursos"]["maestros"]))
+            fixed_days = {}
+            for index, teacher in enumerate(instance.teachers):
+                fixed = [
+                    lecture.preassigned_block
+                    for course in instance.courses
+                    for section in course.sections
+                    for lecture in section.lectures
+                    if lecture.preassigned_block is not None and index in lecture.teacher_indices
+                ]
+                days = Counter(block // instance.blocks_per_day for block in fixed)
+                self.assertTrue(all(n <= teacher.max_daily_load for n in days.values()))
+                self.assertLessEqual(len(days), teacher.max_days)
+                fixed_days[index] = days
             fixed_teacher_blocks = set()
             for course in instance.courses:
                 for section in course.sections:
@@ -178,21 +187,20 @@ class GenerationTests(unittest.TestCase):
         courses = data["eventos"]["asignaturas"]
         teachers = data["recursos"]["maestros"]
         students = data["recursos"]["estudiantes"]
-        self.assertEqual((len(courses), len(teachers), len(students)), (30, 20, 500))
+        self.assertEqual((len(courses), len(students)), (30, 500))
         loads = Counter()
         for course in courses:
             self.assertTrue(1 <= len(course["paralelos"]) <= 4)
             lecture_counts = {len(section["clases"]) for section in course["paralelos"]}
             self.assertEqual(len(lecture_counts), 1)
             self.assertTrue(2 <= next(iter(lecture_counts)) <= 4)
-            staff = course["paralelos"][0]["maestros"]
-            self.assertTrue(1 <= len(staff) <= 2)
-            self.assertEqual(len(staff), len(set(staff)))
-            loads.update(staff)
             for section in course["paralelos"]:
-                self.assertEqual(section["maestros"], staff)
+                self.assertTrue(1 <= len(section["maestros"]) <= 2)
+                for teacher in section["maestros"]:
+                    loads[teacher] += len(section["clases"])
         self.assertEqual(set(loads), {teacher["nombre"] for teacher in teachers})
-        self.assertTrue(all(1 <= count <= 4 for count in loads.values()))
+        self.assertEqual([t["nombre"] for t in teachers], [f"DOC{i:03d}" for i in range(1, len(teachers) + 1)])
+        self.assertTrue(all(2 <= count <= 12 for count in loads.values()))
         for teacher in teachers:
             self.assertEqual(len(teacher["disponibilidad"]), 5)
             for day in teacher["disponibilidad"]:
@@ -218,10 +226,13 @@ class GenerationTests(unittest.TestCase):
 
     def test_invalid_parameters_are_rejected(self):
         for field, value in [
-            ("teacher_count", 0),
+            ("teacher_max_load", 3),
             ("student_count", 0),
-            ("teacher_count", 31),
-            ("teacher_count", 1),
+            ("teacher_load_mean", 13),
+            ("teacher_load_sd", -1),
+            ("co_teaching_probability", 1.5),
+            ("shared_teacher_probability", -0.1),
+            ("max_daily_load", 0),
             ("curricular_sampling_sd", 0),
             ("level_decay", 0),
             ("section_mean", float("nan")),
@@ -235,7 +246,7 @@ class GenerationTests(unittest.TestCase):
 
     def test_nearest_level_fallback_keeps_distinct_requests(self):
         options = GenerationOptions(
-            courses_per_level=(9, 0, 0, 0, 0, 0), teacher_count=4, student_count=25
+            courses_per_level=(9, 0, 0, 0, 0, 0), student_count=25
         )
         data = generate_instance(options, seed=3)
         for student in data["recursos"]["estudiantes"]:
@@ -262,7 +273,8 @@ class GenerationTests(unittest.TestCase):
         availability = {"T": {"Lu": [1]}}
         occupied = {"T": {("Ma", "1-2")}}
         accepted = _preassign_course(
-            course, ("Lu",), ("1-2",), availability, occupied, random.Random(1)
+            course, ("Lu",), ("1-2",), availability, occupied, random.Random(1),
+            max_daily_load=4, max_days={"T": 3},
         )
         self.assertFalse(accepted)
         self.assertEqual(occupied, {"T": {("Ma", "1-2")}})
@@ -308,8 +320,6 @@ class GenerationTests(unittest.TestCase):
                 "1",
                 "--students",
                 "12",
-                "--teachers",
-                "7",
                 "--courses-per-level",
                 "2",
                 "2",
@@ -341,39 +351,37 @@ class GenerationTests(unittest.TestCase):
             self.assertEqual(error.exception.code, 2)
             self.assertEqual(destination.read_bytes(), contents)
 
-    def test_group_uses_highest_teacher_workload_for_every_instance(self):
-        from uctp.generation.cli import _generate_group
-        import copy
-        def candidate(load):
-            return {"restricciones": {"MAX_CARGA_DIARIA": 1},
-                    "eventos": {"asignaturas": [{"paralelos": [
-                        {"maestros": ["T"], "clases": [{} for _ in range(load)]}]}]}}
-        inputs = [candidate(4), candidate(19)]
-        with patch("uctp.generation.cli.generate_instance", side_effect=copy.deepcopy(inputs)), \
-             patch("uctp.generation.cli._accept_candidate", return_value=True), \
-             contextlib.redirect_stdout(io.StringIO()):
-            result = _generate_group(GenerationOptions(), group="BASE", group_index=1,
-                                     count=2, seed=1, retries=0, max_candidates=2)
-        self.assertEqual([data["restricciones"]["MAX_CARGA_DIARIA"] for _, data in result], [7, 7])
-
-    def test_group_revalidates_when_replacement_reduces_maximum_load(self):
+    def test_group_keeps_institutional_limit_and_skips_rejected_candidates(self):
         from uctp.generation.cli import _generate_group
         def candidate(load):
-            return {"restricciones": {"MAX_CARGA_DIARIA": 1},
+            return {"restricciones": {"MAX_CARGA_DIARIA": 4},
                     "eventos": {"asignaturas": [{"paralelos": [
                         {"maestros": ["T"], "clases": [{} for _ in range(load)]}]}]}}
-        checks = []
+        seeds = []
         def accept(data, *, group_index, seed, retries):
-            checks.append((seed, data["restricciones"]["MAX_CARGA_DIARIA"]))
+            seeds.append(seed)
             return seed != 2
-        with patch("uctp.generation.cli.generate_instance", side_effect=[candidate(4), candidate(19), candidate(7)]), \
+        with patch("uctp.generation.cli.generate_instance", side_effect=[candidate(4), candidate(9), candidate(7)]), \
              patch("uctp.generation.cli._accept_candidate", side_effect=accept), \
              contextlib.redirect_stdout(io.StringIO()):
             result = _generate_group(GenerationOptions(), group="BASE", group_index=1,
                                      count=2, seed=1, retries=0, max_candidates=3)
         self.assertEqual([seed for seed, _ in result], [1, 3])
-        self.assertEqual(checks, [(1, 7), (2, 7), (1, 3), (3, 3)])
-        self.assertEqual({data["restricciones"]["MAX_CARGA_DIARIA"] for _, data in result}, {3})
+        self.assertEqual(seeds, [1, 2, 3])
+        self.assertEqual({data["restricciones"]["MAX_CARGA_DIARIA"] for _, data in result}, {4})
+
+    def test_preassignments_respect_daily_limit_and_maximum_days(self):
+        course = {"paralelos": [{"maestros": ["T"], "clases": [{} for _ in range(4)]}]}
+        availability = {"T": {day: [1, 1, 1] for day in ("Lu", "Ma", "Mi")}}
+        occupied = {"T": set()}
+        accepted = _preassign_course(
+            course, ("Lu", "Ma", "Mi"), ("1-2", "3-4", "5-6"), availability, occupied,
+            random.Random(3), max_daily_load=2, max_days={"T": 2},
+        )
+        self.assertTrue(accepted)
+        days = Counter(day for day, _ in occupied["T"])
+        self.assertEqual(len(days), 2)
+        self.assertTrue(all(n <= 2 for n in days.values()))
 
     def test_candidate_limit_records_no_unaccepted_instances(self):
         with (

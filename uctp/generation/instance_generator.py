@@ -6,7 +6,7 @@ from collections import Counter
 from .parameters import GenerationOptions
 from .preassignments import _preassign_course
 from .teacher_availability import _generate_teacher_availability
-from .sampling import _assign_teachers, _sample_counts
+from .sampling import _assign_section_teachers, _sample_counts
 from .student_demand import _generate_students
 
 _DAYS = ("Lu", "Ma", "Mi", "Ju", "Vi")
@@ -29,8 +29,7 @@ def generate_instance(options: GenerationOptions, *, seed: int) -> dict:
     dict
         Synthetic instance data, without metrics or solution results. Candidate
         generation alone does not establish institutional timetable feasibility;
-        the CLI finalizes the shared group daily limit and applies construction
-        acceptance before saving.
+        the CLI applies construction acceptance before saving.
 
     Raises
     ------
@@ -72,25 +71,22 @@ def generate_instance(options: GenerationOptions, *, seed: int) -> dict:
                     "clases": [{"tipo": "Cát"} for _ in range(lectures)],
                 }
             )
+    teacher_names = _assign_section_teachers(
+        courses,
+        rng,
+        load_mean=options.teacher_load_mean,
+        load_sd=options.teacher_load_sd,
+        max_load=options.teacher_max_load,
+        co_teaching_probability=options.co_teaching_probability,
+        shared_teacher_probability=options.shared_teacher_probability,
+    )
     teachers = []
-    for index in range(1, options.teacher_count + 1):
-        teacher = {"nombre": f"DOC{index:03d}"}
+    for name in teacher_names:
+        teacher = {"nombre": name}
         teacher["disponibilidad"] = _generate_teacher_availability(
             _DAYS, options.availability_probability, rng
         )
         teachers.append(teacher)
-    target_counts = _sample_counts(len(teachers), 1, 4, 2.3, 0.7, rng)
-    targets = {
-        teacher["nombre"]: count for teacher, count in zip(teachers, target_counts, strict=True)
-    }
-    _assign_teachers(courses, teachers, targets, rng)
-    weekly_loads = Counter(
-        teacher
-        for course in courses
-        for section in course["paralelos"]
-        for lecture in section["clases"]
-        for teacher in section["maestros"]
-    )
     availability = {
         teacher["nombre"]: {
             day: blocks for item in teacher["disponibilidad"] for day, blocks in item.items()
@@ -98,15 +94,29 @@ def generate_instance(options: GenerationOptions, *, seed: int) -> dict:
         for teacher in teachers
     }
     occupied = {teacher["nombre"]: set() for teacher in teachers}
+    weekly_loads = Counter(
+        teacher
+        for course in courses
+        for section in course["paralelos"]
+        for _ in section["clases"]
+        for teacher in section["maestros"]
+    )
+    max_days = {
+        name: len(_DAYS) - 2 if weekly_loads[name] <= 6 else len(_DAYS) - 1
+        for name in teacher_names
+    }
     for course in courses:
         if rng.random() < options.preassignment_probability:
-            _preassign_course(course, _DAYS, _BLOCKS, availability, occupied, rng)
+            _preassign_course(
+                course, _DAYS, _BLOCKS, availability, occupied, rng,
+                max_daily_load=options.max_daily_load, max_days=max_days,
+            )
     students = _generate_students(courses, options, rng)
     for course in courses:
         course.pop("_level_index")
     return {
         "restricciones": {
-            "MAX_CARGA_DIARIA": max(weekly_loads.values()) // 3 + 1,
+            "MAX_CARGA_DIARIA": options.max_daily_load,
             "MAX_CARGA_BLOQUE": 15,
             "PROFESORES": [
                 {

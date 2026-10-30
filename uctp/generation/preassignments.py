@@ -10,7 +10,17 @@ def _preassign_course(
     availability: dict[str, dict[str, list[int]]],
     occupied: dict[str, set[tuple[str, str]]],
     rng: random.Random,
+    *,
+    max_daily_load: int,
+    max_days: dict[str, int],
 ) -> bool:
+    """Place a whole course, respecting the teachers' institutional limits.
+
+    A position is eligible when it is not protected, not used by the same
+    section, available and free for every teacher, keeps each teacher within
+    ``max_daily_load`` lectures that day and within ``max_days[teacher]``
+    teaching days. On failure, all placements of the course are rolled back.
+    """
     snapshot = {teacher: positions.copy() for teacher, positions in occupied.items()}
     for section in course["paralelos"]:
         section_positions = set()
@@ -29,6 +39,11 @@ def _preassign_course(
                     if all(
                         availability[teacher][day][block_index] == 1
                         and position not in occupied[teacher]
+                        and sum(1 for d, _ in occupied[teacher] if d == day) < max_daily_load
+                        and (
+                            any(d == day for d, _ in occupied[teacher])
+                            or len({d for d, _ in occupied[teacher]}) < max_days[teacher]
+                        )
                         for teacher in teachers
                     ):
                         candidates.append(position)

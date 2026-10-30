@@ -15,18 +15,26 @@ Courses are selected without duplicates. Zero-load students remain in the data.
 
 Teacher availability is sampled separately for each weekly block with
 probability 0.7 of being available. If no block is available on a day, one
-block is chosen randomly and made available. Teachers are assigned per course using
-coverage and target-guided allocation, with one or two teachers shared by all
-its sections. Weekly teacher load is an outcome, not a target. For each group, M is the largest weekly
-teacher load across all its accepted instances. Every teacher in that group
-uses the same daily limit, `floor(M / (N_days - 2)) + 1`, with `N_days = 5`. The group is revalidated if
-candidate replacements change M, and files are saved only after the complete
-group passes construction feasibility. All generated sessions use the course
-teachers; separate teaching-assistant staffing is not modeled. This rule does
-not guarantee feasibility: complete construction is still required before saving.
+block is chosen randomly and made available.
 
-Preassignment probability selects whole courses for a feasible placement
-attempt. It does not guarantee an exact final percentage. The CLI then checks
+Teachers are assigned per section. Each section receives one teacher, or two
+with probability 0.07, and every assigned teacher teaches all lectures of the
+section. Teachers are created with target weekly loads drawn from a rounded
+normal with location 2 and scale 3.25, truncated to 2–12 lectures, until the
+targets cover the weekly teaching demand; the number of teachers is therefore
+an outcome of the demand. Courses are visited in random order. A later section
+of a course reuses the staff of the preceding section with probability 0.5
+when that staff stays within 12 weekly lectures; otherwise each place goes to
+the teacher with the largest remaining target that stays within 12 lectures
+(ties broken at random). No teacher exceeds 12 weekly lectures. Every teacher
+uses the institutional daily limit of 4 blocks (`--max-daily-load`), and the
+maximum number of teaching days follows from the weekly lecture count (3 days
+for at most six lectures, 4 otherwise). All generated sessions use the section
+teachers; separate teaching-assistant staffing is not modeled.
+
+Preassignment probability selects whole courses for a placement attempt that
+respects teacher availability, teacher overlaps, the daily limit and the
+maximum number of teaching days. It does not guarantee an exact final percentage. The CLI then checks
 complete institutional construction feasibility before saving. This does not
 require zero student conflicts or guarantee success for every later seed.
 
