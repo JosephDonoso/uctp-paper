@@ -179,6 +179,43 @@ def export_raw(output: Path, records: list[dict]) -> list[dict]:
     ]
     if trace:
         write_table(output / "trace.csv", trace)
+    checkpoints = []
+    for record, row in zip(records, rows, strict=True):
+        for item in record.get("checkpoints", []):
+            checkpoints.append(
+                {
+                    key: row.get(key)
+                    for key in [
+                        "run_id",
+                        "group",
+                        "instance",
+                        "input_sha256",
+                        "approach",
+                        "alpha",
+                        "strategy",
+                        "local_search",
+                        "seed",
+                        "max_retries",
+                        "status",
+                        "initial_F",
+                        "initial_F_ref",
+                        "initial_R_imb",
+                        "initial_R_dis",
+                        "initial_conflicts",
+                        "construction_seconds",
+                        "construction_attempts",
+                    ]
+                }
+                | {
+                    "iteration_budget": item["iteration_budget"],
+                    "reached": item["reached"],
+                    "optimizer_seconds": item["optimizer_seconds"],
+                    "final_X_sha256": item["final_X_sha256"],
+                }
+                | item["metrics"]
+            )
+    if checkpoints:
+        write_table(output / "checkpoints.csv", checkpoints)
     return rows
 
 
@@ -277,7 +314,7 @@ def read_records(inputs: list[Path]) -> list[dict]:
                         f"Conflicting records for run_id={identifier}; select one source format."
                     )
                 previous_record = unique[identifier]
-                for key in ("X", "Y", "initial_solution", "details", "trace"):
+                for key in ("X", "Y", "initial_solution", "details", "trace", "checkpoints"):
                     if (
                         key in previous_record
                         and key in record

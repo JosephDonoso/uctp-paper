@@ -107,6 +107,9 @@ def run_grid(args: Namespace) -> dict:
             local_search=local_search == "on",
             trace=args.trace,
             final_ssp=not args.no_final_ssp,
+            checkpoints=tuple(sorted(set(getattr(args, "checkpoints", []) or [])))
+            if kind == "iterations"
+            else (),
         )
         validate_options(options)
         specification = dict(

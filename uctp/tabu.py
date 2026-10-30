@@ -42,6 +42,8 @@ class TabuSearch:
         max_stagnant_iterations: int,
         time_limit_seconds: float | None,
         collect_trace: bool = False,
+        checkpoints: tuple[int, ...] = (),
+        checkpoint_callback=None,
     ) -> None:
         self.instance = instance
         self.constraints = constraints
@@ -64,6 +66,8 @@ class TabuSearch:
         self.search_calls = 0
         self.collect_trace = collect_trace
         self.trace: list[dict] = []
+        self.checkpoints = frozenset(checkpoints)
+        self.checkpoint_callback = checkpoint_callback
 
     def solve(self, solution: Solution, *, max_iterations: int) -> str:
         """Replace X and Y with the best evaluated pair; return a stop reason."""
@@ -112,6 +116,10 @@ class TabuSearch:
                         "block_elapsed_seconds": time.time() - start_time,
                     }
                 )
+            if self.checkpoint_callback is not None and self.completed_iterations in self.checkpoints:
+                # The best pair at this point is exactly what a run capped at this
+                # many accepted moves returns; recording it consumes no random numbers.
+                self.checkpoint_callback(self.completed_iterations, best.solution)
             if iteration_count >= max_iterations:
                 reason = "Iteration limit reached."
                 break

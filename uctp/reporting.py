@@ -131,6 +131,27 @@ def execute_run(
         )["metrics"]
     if options.trace:
         document["trace"] = result.trace
+    if options.checkpoints:
+        # Endpoint of a run capped at each checkpoint. A search that stopped
+        # before reaching a checkpoint (e.g. no admissible move) returns its
+        # final pair for that budget as well.
+        recorded = {item["iterations"]: item for item in result.checkpoints}
+        document["checkpoints"] = []
+        for budget in options.checkpoints:
+            item = recorded.get(budget)
+            state = item["solution"] if item else result.solution
+            active = sorted(key for key, value in state.X.items() if value == 1)
+            document["checkpoints"].append(
+                dict(
+                    iteration_budget=budget,
+                    reached=item is not None,
+                    optimizer_seconds=item["optimizer_seconds"]
+                    if item
+                    else result.diagnostics["optimizer_seconds"],
+                    final_X_sha256=hashlib.sha256(json.dumps(active).encode()).hexdigest(),
+                    metrics=measure_solution(instance, state, alpha=options.alpha)["metrics"],
+                )
+            )
     document.update(
         schema_version=1,
         initial_metrics=initial,

@@ -64,6 +64,14 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--trace", action="store_true", help="Record native objective values at accepted moves."
     )
+    run.add_argument(
+        "--checkpoints",
+        type=int,
+        nargs="+",
+        default=[],
+        help="Embedded iteration budgets: also record the endpoint of a run capped at each of these "
+        "accepted-move counts (exactly what a separate run with that budget returns).",
+    )
     run.add_argument("--dry-run", action="store_true")
     run.add_argument("--resume", action="store_true")
     analysis = commands.add_parser(

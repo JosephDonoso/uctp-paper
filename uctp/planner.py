@@ -40,6 +40,7 @@ class SolveOptions:
     total_iteration_limit: int | None = None
     trace: bool = False
     final_ssp: bool = True
+    checkpoints: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ class SolveResult:
     initial_solution: Solution | None = field(default=None, compare=False)
     trace: list[dict] = field(default_factory=list, compare=False)
     stale_solution: Solution | None = field(default=None, compare=False)
+    checkpoints: list[dict] = field(default_factory=list, compare=False)
 
 
 def solve(
@@ -82,6 +84,21 @@ def solve(
         beta=0.25,
         cv_tolerance=0.10,
     )
+    checkpoints: list[dict] = []
+    checkpoint_overhead = [0.0]
+
+    def record_checkpoint(iterations: int, best: Solution) -> None:
+        captured = time.perf_counter()
+        checkpoints.append(
+            dict(
+                iterations=iterations,
+                optimizer_seconds=captured - optimizer_started - capture_seconds
+                - checkpoint_overhead[0],
+                solution=best.copy(),
+            )
+        )
+        checkpoint_overhead[0] += time.perf_counter() - captured
+
     search = TabuSearch(
         instance,
         constraints,
@@ -92,6 +109,8 @@ def solve(
         max_stagnant_iterations=options.max_stagnant_iterations,
         time_limit_seconds=options.time_limit_seconds,
         collect_trace=options.trace,
+        checkpoints=tuple(options.checkpoints),
+        checkpoint_callback=record_checkpoint if options.checkpoints else None,
     )
     construction_started = time.perf_counter()
     try:
@@ -160,7 +179,8 @@ def solve(
         "optimizer_seconds": time.perf_counter()
         - optimizer_started
         - capture_seconds
-        - final_ssp_seconds,
+        - final_ssp_seconds
+        - checkpoint_overhead[0],
         "retries_used": construction._retry_count,
         "construction_attempts": construction._retry_count + 1,
         "completed_iterations": search.completed_iterations,
@@ -168,7 +188,13 @@ def solve(
         "ssp_calls": sectioning.solve_calls,
     }
     return SolveResult(
-        best_solution, reason, diagnostics, initial_solution, search.trace, stale_solution
+        best_solution,
+        reason,
+        diagnostics,
+        initial_solution,
+        search.trace,
+        stale_solution,
+        checkpoints,
     )
 
 
@@ -210,6 +236,23 @@ def validate_options(options: SolveOptions) -> None:
     if options.time_limit_seconds is not None:
         if not math.isfinite(options.time_limit_seconds) or options.time_limit_seconds <= 0:
             raise ValueError("time_limit_seconds must be finite and positive.")
+    if options.checkpoints:
+        points = options.checkpoints
+        if (
+            not isinstance(points, tuple)
+            or any(type(k) is not int or k < 1 for k in points)
+            or list(points) != sorted(set(points))
+        ):
+            raise ValueError("checkpoints must be a strictly increasing tuple of positive integers.")
+        if (
+            options.approach != Approach.EMBEDDED
+            or options.time_limit_seconds is not None
+            or options.total_iteration_limit is None
+            or points[-1] >= options.total_iteration_limit
+        ):
+            raise ValueError(
+                "checkpoints require Embedded with an iteration budget larger than every checkpoint."
+            )
     if options.seed is not None and (
         type(options.seed) is not int or not 0 <= options.seed < 2**32
     ):
