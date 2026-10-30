@@ -1,27 +1,49 @@
 # One-time setup on Windows (PowerShell, from the repository root):
 #   powershell -ExecutionPolicy Bypass -File tools\setup_windows.ps1
-# Creates .venv with Python 3.12.13, installs the solver with Numba and the
-# analysis libraries, and runs the test suite.
+#
+# python.org publishes no Windows installer for Python 3.12.13 (3.12 receives
+# source-only security releases after 3.12.10). This script therefore uses uv
+# (https://docs.astral.sh/uv/), which installs a standalone CPython 3.12.13 for
+# this project without touching any other Python on the computer. It then
+# creates .venv, installs the solver with Numba plus pytest, pandas, matplotlib
+# and SciPy, runs the tests and prints the experiment plan.
 
 $ErrorActionPreference = "Stop"
 $required = "3.12.13"
-$launcher = $null
-foreach ($candidate in @(@{ Exe = "py"; Args = @("-3.12") }, @{ Exe = "python"; Args = @() })) {
-    try {
-        $version = & $candidate.Exe @($candidate.Args + "--version") 2>&1
-        if ("$version" -match [regex]::Escape($required)) { $launcher = $candidate; break }
-    } catch { }
+
+function Find-Uv {
+    $command = Get-Command uv -ErrorAction SilentlyContinue
+    if ($command) { return $command.Source }
+    foreach ($path in @("$env:USERPROFILE\.local\bin\uv.exe", "$env:USERPROFILE\.cargo\bin\uv.exe")) {
+        if (Test-Path $path) { return $path }
+    }
+    return $null
 }
-if ($null -eq $launcher) {
-    throw "Python $required was not found. Install it from python.org (Windows installer, 64-bit) and run this script again."
+
+$uv = Find-Uv
+if ($null -eq $uv) {
+    Write-Host "Installing uv (per-user, no administrator rights needed)..." -ForegroundColor Cyan
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://astral.sh/uv/install.ps1 | iex"
+    $uv = Find-Uv
+    if ($null -eq $uv) { throw "uv could not be installed. Install it manually (https://docs.astral.sh/uv/) and run this script again." }
 }
-Write-Host "Using $($launcher.Exe) $($launcher.Args -join ' ') ($required)" -ForegroundColor Cyan
-if (-not (Test-Path ".venv\Scripts\python.exe")) {
-    & $launcher.Exe @($launcher.Args + @("-m", "venv", ".venv"))
+Write-Host "Using uv: $uv" -ForegroundColor Cyan
+
+& $uv python install $required
+if ($LASTEXITCODE -ne 0) { throw "uv could not install Python $required." }
+if (Test-Path ".venv\Scripts\python.exe") {
+    $current = & ".venv\Scripts\python.exe" --version
+    if ("$current" -notmatch [regex]::Escape($required)) {
+        throw ".venv uses $current. Delete the .venv folder and run this script again."
+    }
+} else {
+    & $uv venv --python $required .venv
+    if ($LASTEXITCODE -ne 0) { throw "Could not create .venv." }
 }
 $py = ".venv\Scripts\python.exe"
-& $py -m pip install --upgrade pip
-& $py -m pip install -e ".[fast]" pytest pandas matplotlib scipy
+& $uv pip install --python $py -e ".[fast]" pytest pandas matplotlib scipy
+if ($LASTEXITCODE -ne 0) { throw "Package installation failed." }
+& $py -c "import sys, numpy, numba; print('Python', sys.version.split()[0], 'NumPy', numpy.__version__, 'Numba', numba.__version__)"
 & $py -m pytest -q tests
 if ($LASTEXITCODE -ne 0) { throw "Tests failed." }
 & $py tools\campaigns.py plan

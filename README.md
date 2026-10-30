@@ -18,7 +18,7 @@ python -m venv .venv
 .venv\Scripts\python.exe -m pip install -e .
 ```
 
-`python --version` must report `3.12.13`; the package requires this exact version. Install the interpreter before creating the virtual environment. Commands below use the environment directly, without activation. On Linux or macOS, replace `.venv\Scripts\python.exe` with `.venv/bin/python`.
+`python --version` must report `3.12.13`; the package requires this exact version. python.org offers no Windows installer for 3.12.13 (3.12 receives source-only security releases after 3.12.10); on Windows, `tools\setup_windows.ps1` obtains it with [uv](https://docs.astral.sh/uv/) (`uv python install 3.12.13`, `uv venv --python 3.12.13 .venv`) and installs everything needed for the experiments. Install the interpreter before creating the virtual environment. Commands below use the environment directly, without activation. On Linux or macOS, replace `.venv\Scripts\python.exe` with `.venv/bin/python`.
 
 **Verified environment:** package installation and tests have been run on Windows with Python 3.12.13 and NumPy 2.4.6.
 
