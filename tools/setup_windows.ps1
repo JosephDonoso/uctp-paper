@@ -27,7 +27,17 @@ if ($null -eq $uv) {
     $uv = Find-Uv
     if ($null -eq $uv) { throw "uv could not be installed. Install it manually (https://docs.astral.sh/uv/) and run this script again." }
 }
-Write-Host "Using uv: $uv" -ForegroundColor Cyan
+Write-Host "Using uv: $uv ($(& $uv --version))" -ForegroundColor Cyan
+
+# Older uv versions do not know recent Python patch releases: update uv first.
+& $uv self update
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "uv self update is not available for this uv installation; reinstalling uv..." -ForegroundColor Yellow
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://astral.sh/uv/install.ps1 | iex"
+    $uv = "$env:USERPROFILE\.local\bin\uv.exe"
+    if (-not (Test-Path $uv)) { throw "uv could not be updated. Update it manually and run this script again." }
+}
+Write-Host "uv version: $(& $uv --version)" -ForegroundColor Cyan
 
 & $uv python install $required
 if ($LASTEXITCODE -ne 0) { throw "uv could not install Python $required." }
