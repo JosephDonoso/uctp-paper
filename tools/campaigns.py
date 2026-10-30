@@ -57,7 +57,7 @@ PILOT_INSTANCES = 6
 PILOT_BUDGET = 3000
 PILOT_CHECKPOINTS = [25, 50, 100, 200, 500, 1000, 1500, 2000, 2500]
 DEFAULT_ITERATION_BUDGET = 2000
-SHORT_BUDGETS = [25, 50, 100, 200, 500, 1000, 1500]
+SHORT_BUDGETS = [25, 50, 100, 200, 500, 1000, 1500, 2000]
 # Time estimates measured on the authors' Ryzen 7 7700X (single process).
 SECONDS_PER_ITERATION = 0.013   # Embedded on calibrated synthetic instances
 RUN_OVERHEAD = 0.6              # setup, construction and extraction per run
