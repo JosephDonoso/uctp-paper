@@ -187,6 +187,7 @@ def run_grid(args: Namespace) -> dict:
                 tags=tags,
             )
             temporary = destination.with_suffix(".tmp")
+            temporary.unlink(missing_ok=True)  # leftover of an interrupted write
             write_document(temporary, document)
             temporary.replace(destination)
             print(
