@@ -26,7 +26,9 @@ an outcome of the demand. Courses are visited in random order. A later section
 of a course reuses the staff of the preceding section with probability 0.5
 when that staff stays within 12 weekly lectures; otherwise each place goes to
 the teacher with the largest remaining target that stays within 12 lectures
-(ties broken at random). No teacher exceeds 12 weekly lectures. Every teacher
+(ties broken at random); if no existing teacher can take the section, a new
+teacher is created with a target from the same distribution. No teacher exceeds
+12 weekly lectures. Every teacher
 uses the institutional daily limit of 4 blocks (`--max-daily-load`), and the
 maximum number of teaching days follows from the weekly lecture count (3 days
 for at most six lectures, 4 otherwise). All generated sessions use the section
