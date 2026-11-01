@@ -90,4 +90,22 @@ optimizing again.
 
 The validation checks, per stage, planned against recorded runs, a single
 solver revision, input checksums against `datasets/Synthetic/SHA256SUMS`, the
-real-instance seeds, duplicate runs and over-budget runs.
+real-instance seeds, duplicate runs and over-budget runs. It also reports, from
+`progress.csv`, the share of the wall-clock time of the time-budget shards spent
+at each number of simultaneous processes (in the campaigns of the paper, 100 %
+at four processes).
+
+## Tables, figures and numbers of the manuscript
+
+```powershell
+.venv\Scripts\python.exe -m pip install -e ".[paper]"   # pandas, SciPy, Matplotlib
+.venv\Scripts\python.exe tools\paper_analysis.py --results results --out paper_out
+```
+
+`tools/paper_analysis.py` reads only the merged tables (`<stage>/merged/raw.csv`,
+`B_*/merged/checkpoints.csv`, the pilot summaries) and `tools/real_baselines.json`,
+and writes `paper_out/tables/*.tex` (included by `main.tex` and
+`supplementary.tex`), `paper_out/figures/*.pdf` and `paper_out/numbers.json`
+(every number cited in the text). Resampling uses fixed seeds, so repeated runs
+give identical outputs. The statistical procedures are listed in the script's
+docstring.

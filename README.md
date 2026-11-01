@@ -222,7 +222,9 @@ Analyze the resulting runs, comparing approaches, weights, LS settings and budge
 
 This example uses `--unit run` because it repeats seeds on one instance. For comparisons across synthetic instances, the default `--unit instance` aggregates repeated seeds within each instance before inference.
 
-The exports include **raw CSV, full JSONL, long-format metric data, descriptives, success rates, paired values, factor contrasts and machine-readable analysis JSON**. Optional raw student, section and trace tables support further analysis. No images are generated.
+The exports include **raw CSV, full JSONL, long-format metric data, descriptives, success rates, paired values, factor contrasts and machine-readable analysis JSON**. Optional raw student, section and trace tables support further analysis. This general command generates no images.
+
+The tables, figures and cited numbers of the manuscript are regenerated from the campaign records by `tools/paper_analysis.py` (optional dependencies `.[paper]`); see [docs/CAMPAIGNS.md](docs/CAMPAIGNS.md).
 
 See [docs/RESEARCH.md](docs/RESEARCH.md) for timed grids, resume, filters, custom CSV inputs, metric definitions, statistical assumptions and all output formats. The installed `uctp-experiments` command exposes the same interface.
 

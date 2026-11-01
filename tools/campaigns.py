@@ -513,6 +513,29 @@ def status_rows(stages: list[Stage]) -> list[dict]:
     return rows
 
 
+def time_weighted_concurrency(progress: Path) -> dict[int, float]:
+    """Share of the wall-clock time with >= 1 time-budget shard running, by number of processes.
+
+    Rebuilt from the start/end events in progress.csv. An interrupted session writes no
+    end events, so a start event that does not increase the process count marks a new
+    session and the gap before it is ignored.
+    """
+    with progress.open(encoding="utf-8") as stream:
+        rows = list(csv.DictReader(stream))
+    seconds: dict[int, float] = {}
+    prev = None
+    for row in rows:
+        t = dt.datetime.fromisoformat(row["time"])
+        total, timed = int(row["active_total"]), int(row["active_time"])
+        if prev is not None:
+            new_session = row["event"] == "start" and total <= prev[1]
+            if not new_session and prev[2] > 0:
+                seconds[prev[1]] = seconds.get(prev[1], 0.0) + (t - prev[0]).total_seconds()
+        prev = (t, total, timed)
+    whole = sum(seconds.values())
+    return {k: v / whole for k, v in seconds.items()} if whole else {}
+
+
 def validate(results: Path, stages: list[Stage], data: Path) -> bool:
     lines = [f"# Validation report ({now()})", ""]
     ok = True
@@ -569,12 +592,11 @@ def validate(results: Path, stages: list[Stage], data: Path) -> bool:
                      f"{'; '.join(sorted(set(problems))[:5]) or 'none'} |")
     progress = results / "progress.csv"
     if progress.is_file():
-        with progress.open(encoding="utf-8") as stream:
-            starts = [r for r in csv.DictReader(stream) if r["event"] == "start" and r["kind"] == "time"]
-        if starts:
-            loads = [int(r["active_total"]) for r in starts]
-            lines += ["", f"Time-budget shards started with {min(loads)}–{max(loads)} simultaneous processes "
-                          f"(median {statistics.median(loads):.0f}); see progress.csv."]
+        shares = time_weighted_concurrency(progress)
+        if shares:
+            text = ", ".join(f"{k} processes {v:.1%}" for k, v in sorted(shares.items()))
+            lines += ["", "Concurrency while time-budget shards were running (share of their wall-clock "
+                          f"time, from progress.csv): {text}."]
     lines += ["", "Overall: " + ("complete and consistent." if ok else "INCOMPLETE or inconsistent (see table).")]
     (results / "VALIDATION.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
