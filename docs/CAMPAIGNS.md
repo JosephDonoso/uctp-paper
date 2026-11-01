@@ -102,6 +102,10 @@ at four processes).
 .venv\Scripts\python.exe tools\paper_analysis.py --results results --out paper_out
 ```
 
+The merged records of the runs reported in the manuscript are distributed in
+`paper_results/` (see its README); use `--results paper_results` to regenerate
+the manuscript outputs without running the campaigns.
+
 `tools/paper_analysis.py` reads only the merged tables (`<stage>/merged/raw.csv`,
 `B_*/merged/checkpoints.csv`, the pilot summaries) and `tools/real_baselines.json`,
 and writes `paper_out/tables/*.tex` (included by `main.tex` and

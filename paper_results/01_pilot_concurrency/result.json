@@ -1,0 +1,40 @@
+{
+  "recorded_at": "2026-10-30T11:25:48",
+  "seconds": 30,
+  "rows": [
+    {
+      "processes": 1,
+      "iterations": [
+        820
+      ],
+      "mean": 820,
+      "loss_percent": 0.0
+    },
+    {
+      "processes": 4,
+      "iterations": [
+        759,
+        749,
+        756,
+        757
+      ],
+      "mean": 755.25,
+      "loss_percent": 7.9
+    },
+    {
+      "processes": 6,
+      "iterations": [
+        715,
+        718,
+        715,
+        711,
+        718,
+        708
+      ],
+      "mean": 714.1666666666666,
+      "loss_percent": 12.9
+    }
+  ],
+  "threshold_percent": 15,
+  "recommended_workers": 6
+}

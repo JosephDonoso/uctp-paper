@@ -1,0 +1,14 @@
+{
+  "python": "3.12.13",
+  "numpy": "2.4.6",
+  "numba": "0.68.1",
+  "solver_revision": "eb48b2dbbae762004d220ce731313fe2209c50c9a18a4821db96357dc8616adf",
+  "recorded_at": "2026-10-30T11:19:48",
+  "platform": "Windows-10-10.0.19045-SP0",
+  "processor": "AMD64 Family 25 Model 97 Stepping 2, AuthenticAMD",
+  "machine": "AMD64",
+  "logical_cpus": 16,
+  "workers": 4,
+  "git_commit": "19b9544335289bec555e0fec2017119b67f0cc83",
+  "tests": "62 passed, 69 subtests passed in 3.20s"
+}
