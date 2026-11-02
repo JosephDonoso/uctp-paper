@@ -14,6 +14,7 @@ from .construction import ConstructionFailure
 from .instance_io import load_instance, solution_document
 from .metrics import measure_solution
 from .planner import Approach, SolveOptions, solve
+from .reevaluation import reevaluate
 
 
 def solver_revision() -> str:
@@ -37,6 +38,7 @@ def execute_run(
     max_daily_load: int | None = None,
     max_block_load: int = 15,
     tags: dict[str, str] | None = None,
+    reevaluate_orders: int = 0,
 ) -> dict:
     """Solve once and return raw parameters, success/failure and endpoint metrics.
 
@@ -59,7 +61,13 @@ def execute_run(
         options.total_iteration_limit or interval * options.search_blocks,
         interval * options.search_blocks,
     )
-    approach = "Embedded" if options.approach == Approach.EMBEDDED else f"Decoupled-{interval}"
+    approach = (
+        "Embedded"
+        if options.approach == Approach.EMBEDDED
+        else "Sequential"
+        if options.approach == Approach.SEQUENTIAL
+        else f"Decoupled-{interval}"
+    )
     metadata = dict(
         run_id=run_id or uuid.uuid4().hex,
         python=platform.python_version(),
@@ -150,8 +158,23 @@ def execute_run(
                     else result.diagnostics["optimizer_seconds"],
                     final_X_sha256=hashlib.sha256(json.dumps(active).encode()).hexdigest(),
                     metrics=measure_solution(instance, state, alpha=options.alpha)["metrics"],
+                    ssp_calls=item["ssp_calls"] if item else result.diagnostics["ssp_calls"],
+                    optimizer_cpu_seconds=item["optimizer_cpu_seconds"]
+                    if item
+                    else result.diagnostics["optimizer_cpu_seconds"],
                 )
             )
+            if reevaluate_orders:
+                document["checkpoints"][-1]["reevaluation"] = reevaluate(
+                    instance, state.X, alpha=options.alpha, orders=reevaluate_orders,
+                    key=f"{metadata['run_id']}:{budget}", local_search=options.local_search,
+                )
+    if reevaluate_orders:
+        # After timing; uses private random streams (see uctp/reevaluation.py).
+        document["reevaluation"] = reevaluate(
+            instance, result.solution.X, alpha=options.alpha, orders=reevaluate_orders,
+            key=metadata["run_id"], local_search=options.local_search,
+        )
     document.update(
         schema_version=1,
         initial_metrics=initial,

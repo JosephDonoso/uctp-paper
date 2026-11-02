@@ -113,3 +113,38 @@ and writes `paper_out/tables/*.tex` (included by `main.tex` and
 (every number cited in the text). Resampling uses fixed seeds, so repeated runs
 give identical outputs. The statistical procedures are listed in the script's
 docstring.
+
+## Revision v7 experiments (`tools/campaigns_v7.py`)
+
+The v7 revision adds experiments E1–E6 (see the manuscript's supplement). They
+use a new solver revision, so their records go to a separate folder,
+`results_v7/`. Commands, from the repository root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\setup_windows.ps1    # once (adds openpyxl)
+powershell -ExecutionPolicy Bypass -File tools\run_v7.ps1 -Round 1 # E6 timing, Decoupled pilot, E1c
+# authors analyse round 1 and write results_v7\decision.json, e.g. {"crn": true}
+powershell -ExecutionPolicy Bypass -File tools\run_v7.ps1 -Round 2 # E5a, E5b, E2, E3
+.venv\Scripts\python.exe tools\campaigns_v7.py package
+```
+
+New solver options (all off by default, so the published campaigns are
+reproduced exactly): `--common-random-numbers` (Embedded evaluates the
+best-so-far solution and all neighbours of an iteration with the same student
+order), exact checkpoints for Decoupled-k, the `Sequential` approach (proxy
+objective of expected student conflicts, one SSP at the end, `uctp/proxy.py`),
+`--trace-components`, `--warm-start`, neighbourhoods of up to 200 moves and
+`--reevaluate N` (the final timetable and every checkpoint are re-evaluated
+with N fresh SSP orders, `uctp/reevaluation.py`).
+
+Re-evaluation of published runs without re-running them:
+
+```powershell
+.venv\Scripts\python.exe tools\extract_solutions.py results C_synthetic_30s extract\C.jsonl.gz
+.venv\Scripts\python.exe tools\reevaluate_solutions.py --solutions extract\*.jsonl.gz --orders 50 --out reeval\own.csv
+.venv\Scripts\python.exe tools\v7_noise_ls.py --solutions extract\*.jsonl.gz --seeds paper_results\SEEDS.json --out reeval
+```
+
+`tools/real_observed.py` rebuilds the implemented timetable X_real and the
+recorded enrollment from the source workbook (it reproduces the published
+observed baseline exactly).

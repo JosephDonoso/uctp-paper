@@ -72,6 +72,29 @@ def build_parser() -> argparse.ArgumentParser:
         help="Embedded iteration budgets: also record the endpoint of a run capped at each of these "
         "accepted-move counts (exactly what a separate run with that budget returns).",
     )
+    run.add_argument(
+        "--common-random-numbers",
+        action="store_true",
+        help="Embedded: evaluate the best-so-far solution and all neighbors of an iteration "
+        "with the same SSP student order.",
+    )
+    run.add_argument(
+        "--trace-components",
+        action="store_true",
+        help="With --trace: also record R_imb and R_dis of the current and best solutions.",
+    )
+    run.add_argument(
+        "--reevaluate",
+        type=int,
+        default=0,
+        help="Re-evaluate the final timetable (and checkpoints) with this many fresh SSP orders.",
+    )
+    run.add_argument(
+        "--warm-start",
+        type=Path,
+        help="JSON {instance_sha256: {seed: [[course, section, lecture, block], ...]}}: start "
+        "the search from these timetables instead of constructing one.",
+    )
     run.add_argument("--dry-run", action="store_true")
     run.add_argument("--resume", action="store_true")
     analysis = commands.add_parser(

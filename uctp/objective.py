@@ -125,6 +125,8 @@ class SearchObjective:
         reference_dissatisfaction = active_students * self.idle_tolerance
         imbalance_ratio = observed_imbalance / max(reference_imbalance, 1e-6)
         dissatisfaction_ratio = dissatisfaction / max(reference_dissatisfaction, 1e-6)
+        # Kept for optional search traces; never read by the search itself.
+        self.last_components = (imbalance_ratio, dissatisfaction_ratio)
         return (imbalance_ratio**self.alpha) * dissatisfaction_ratio
 
 

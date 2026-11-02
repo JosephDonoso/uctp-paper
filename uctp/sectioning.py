@@ -32,13 +32,25 @@ class StudentSectioning:
     """
 
     def __init__(
-        self, instance: Instance, objective: SearchObjective, *, local_search: bool = True
+        self,
+        instance: Instance,
+        objective: SearchObjective,
+        *,
+        local_search: bool = True,
+        local_search_probability: float | None = None,
     ) -> None:
         self.instance = instance
         self.objective = objective
         self.idle_tolerance = objective.idle_tolerance
         self.local_search = local_search
+        # Partial adjustment (sensitivity analysis only): each student applies
+        # the local search with this probability. None keeps the published
+        # behaviour and draws no extra random numbers.
+        if local_search_probability is not None and not 0 <= local_search_probability <= 1:
+            raise ValueError("local_search_probability must lie in [0, 1].")
+        self.local_search_probability = local_search_probability
         self.solve_calls = 0
+        self._rng = random
         self._multi_section_courses = frozenset(
             index for index, course in enumerate(instance.courses) if len(course.sections) > 1
         )
@@ -68,11 +80,11 @@ class StudentSectioning:
         if self._k_n_blocks > 62:
             raise ValueError("The SSP kernel supports at most 62 blocks.")
 
-    def _solve_kernel(self, solution: Solution) -> float:
+    def _solve_kernel(self, solution: Solution, rng) -> float:
         section_blocks = collect_section_blocks(self.instance, solution.X)
         total = self._k_n_sec_total
         sb_ptr, flat, masks, distinct = _ssp_kernel.section_arrays(self.instance, section_blocks)
-        version, internal, gauss = random.getstate()
+        version, internal, gauss = rng.getstate()
         mt = np.fromiter(internal, dtype=np.int64, count=624)
         pos = np.array([internal[-1]], dtype=np.int64)
         n_students = len(self.instance.students)
@@ -88,7 +100,7 @@ class StudentSectioning:
             self._k_n_blocks, float(max(0, float(self.idle_tolerance))), self.local_search,
             assigned, order, enrollments, costs,
         )
-        random.setstate((version, (*mt.tolist(), int(pos[0])), gauss))
+        rng.setstate((version, (*mt.tolist(), int(pos[0])), gauss))
         solution.Y = dict.fromkeys(
             zip(
                 self._k_slot_student.tolist(),
@@ -105,11 +117,27 @@ class StudentSectioning:
                 sid += 1
         return self.objective.evaluate_from_costs(enrollment_map, float(costs.sum()))
 
-    def solve(self, solution: Solution) -> float:
-        """Replace Y, keep X fixed, and return the internal search objective."""
+    def solve(self, solution: Solution, rng: random.Random | None = None) -> float:
+        """Replace Y, keep X fixed, and return the internal search objective.
+
+        ``rng`` supplies the random numbers (student order and local-search
+        course order); by default Python's global generator is used, as in the
+        published runs. Passing a generator in a given state makes the solve a
+        deterministic function of X and that state (common random numbers).
+        """
         self.solve_calls += 1
-        if kernel_enabled():
-            return self._solve_kernel(solution)
+        rng = random if rng is None else rng
+        partial = self.local_search_probability not in (None, 0.0, 1.0)
+        if kernel_enabled() and not partial:
+            if self.local_search_probability is None:
+                return self._solve_kernel(solution, rng)
+            saved = self.local_search
+            self.local_search = self.local_search_probability == 1.0
+            try:
+                return self._solve_kernel(solution, rng)
+            finally:
+                self.local_search = saved
+        self._rng = rng
         solution.Y = {}
         self._section_blocks = collect_section_blocks(self.instance, solution.X)
         self._section_masks = {}
@@ -125,7 +153,9 @@ class StudentSectioning:
         }
         student_blocks = {index: [] for index in range(len(self.instance.students))}
         student_order = list(range(len(self.instance.students)))
-        random.shuffle(student_order)
+        rng.shuffle(student_order)
+        apply_all = self.local_search_probability is None
+        probability = self.local_search_probability
         for student_index in student_order:
             student = self.instance.students[student_index]
             courses = list(student.course_indices)
@@ -142,7 +172,10 @@ class StudentSectioning:
                 solution.Y[student_index, course_index, section_index] = 1
                 self._enrollments[course_index, section_index] += 1
                 occupied_blocks.extend(self._section_blocks[course_index, section_index])
-            if self.local_search:
+            if apply_all:
+                if self.local_search:
+                    self._refine_sections(solution, student_index, courses[:], occupied_blocks)
+            elif probability == 1.0 or (probability > 0.0 and rng.random() < probability):
                 self._refine_sections(solution, student_index, courses[:], occupied_blocks)
             student_blocks[student_index] = occupied_blocks
         return self.objective.evaluate_assignment(self._enrollments, student_blocks)
@@ -195,7 +228,7 @@ class StudentSectioning:
     ) -> None:
         # Same moves, order and acceptance rule as the published version; the
         # current cost is carried instead of recomputed (it is deterministic).
-        random.shuffle(courses)
+        self._rng.shuffle(courses)
         multi = self._multi_section_courses
         if not any(course_index in multi for course_index in courses):
             return

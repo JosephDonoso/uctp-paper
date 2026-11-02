@@ -51,7 +51,7 @@ if (Test-Path ".venv\Scripts\python.exe") {
     if ($LASTEXITCODE -ne 0) { throw "Could not create .venv." }
 }
 $py = ".venv\Scripts\python.exe"
-& $uv pip install --python $py -e ".[fast]" pytest pandas matplotlib scipy
+& $uv pip install --python $py -e ".[fast]" pytest pandas matplotlib scipy openpyxl
 if ($LASTEXITCODE -ne 0) { throw "Package installation failed." }
 & $py -c "import sys, numpy, numba; print('Python', sys.version.split()[0], 'NumPy', numpy.__version__, 'Numba', numba.__version__)"
 & $py -m pytest -q tests

@@ -22,9 +22,36 @@ from .records import export_raw
 def _approach(value: str) -> tuple[Approach, int | None]:
     if value == "Embedded":
         return Approach.EMBEDDED, None
+    if value == "Sequential":
+        return Approach.SEQUENTIAL, None
     if value.startswith("Decoupled-") and value[10:].isdigit() and int(value[10:]) > 0:
         return Approach.DECOUPLED, int(value[10:])
-    raise ValueError("Use Embedded or Decoupled-k with a positive integer k.")
+    raise ValueError("Use Embedded, Sequential or Decoupled-k with a positive integer k.")
+
+
+def _warm_starts(path: Path | None, instances: dict) -> dict:
+    """{(sha256, seed): index timetable} from a JSON of recorded identifier timetables."""
+    if path is None:
+        return {}
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    result = {}
+    for digest, by_seed in data.items():
+        instance = instances.get(digest)
+        if instance is None:
+            continue
+        courses = {course.course_id: index for index, course in enumerate(instance.courses)}
+        blocks = {block: index for index, block in enumerate(instance.block_ids)}
+        for seed, rows in by_seed.items():
+            keys = []
+            for course_id, section_id, lecture_id, block in rows:
+                c = courses[course_id]
+                sections = instance.courses[c].sections
+                s = next(i for i, sec in enumerate(sections) if sec.section_id == section_id)
+                lectures = sections[s].lectures
+                l = next(i for i, lec in enumerate(lectures) if lec.lecture_id == lecture_id)
+                keys.append((c, s, l, blocks[block]))
+            result[digest, int(seed)] = tuple(sorted(keys))
+    return result
 
 
 def run_grid(args: Namespace) -> dict:
@@ -67,7 +94,7 @@ def run_grid(args: Namespace) -> dict:
         if not key.isidentifier() or key in tags:
             raise ValueError("Tag names must be unique identifiers.")
         tags[key] = value
-    inputs, identities = [], set()
+    inputs, identities, loaded = [], set(), {}
     for path in files:
         group = args.group or path.parent.name
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -76,19 +103,23 @@ def run_grid(args: Namespace) -> dict:
                 "Duplicate instance content within one group; avoid duplicate experimental units."
             )
         identities.add((group, digest))
-        load_instance(
+        loaded[digest] = load_instance(
             path,
             input_format=args.input_format,
             max_daily_load=args.max_daily_load,
             max_block_load=args.max_block_load,
         )
         inputs.append(dict(path=str(path), sha256=digest, group=group))
+    warm = _warm_starts(getattr(args, "warm_start", None), loaded)
     revision = solver_revision()
     jobs = []
     for source, seed, strategy, approach, alpha, local_search, (kind, budget) in itertools.product(
         inputs, seeds, args.strategies, args.approaches, args.alphas, args.local_search, budgets
     ):
         integration, interval = _approach(approach)
+        start = warm.get((source["sha256"], seed))
+        if getattr(args, "warm_start", None) is not None and start is None:
+            raise ValueError(f"No warm-start timetable for {source['path']} seed {seed}.")
         total = args.iteration_ceiling if kind == "seconds" else int(budget)
         per_search = interval or total
         blocks = math.ceil(total / per_search) if integration == Approach.DECOUPLED else 1
@@ -108,8 +139,11 @@ def run_grid(args: Namespace) -> dict:
             trace=args.trace,
             final_ssp=not args.no_final_ssp,
             checkpoints=tuple(sorted(set(getattr(args, "checkpoints", []) or [])))
-            if kind == "iterations"
+            if kind == "iterations" and integration != Approach.SEQUENTIAL
             else (),
+            common_random_numbers=bool(getattr(args, "common_random_numbers", False)),
+            trace_components=bool(getattr(args, "trace_components", False)),
+            initial_timetable=start,
         )
         validate_options(options)
         specification = dict(
@@ -129,7 +163,7 @@ def run_grid(args: Namespace) -> dict:
     if len({job[0] for job in jobs}) != len(jobs):
         raise ValueError("Repeated treatment levels produce duplicate runs.")
     options = {
-        key: value
+        key: str(value) if isinstance(value, Path) else value
         for key, value in vars(args).items()
         if key not in {"output", "resume", "dry_run", "inputs"}
     }
@@ -185,6 +219,7 @@ def run_grid(args: Namespace) -> dict:
                 max_daily_load=args.max_daily_load,
                 max_block_load=args.max_block_load,
                 tags=tags,
+                reevaluate_orders=getattr(args, "reevaluate", 0) or 0,
             )
             temporary = destination.with_suffix(".tmp")
             temporary.unlink(missing_ok=True)  # leftover of an interrupted write

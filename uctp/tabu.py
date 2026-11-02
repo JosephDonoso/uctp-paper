@@ -18,6 +18,7 @@ class _Candidate:
     solution: Solution
     move: Move | None
     objective: float
+    components: tuple[float, float] | None = None
 
 
 class TabuSearch:
@@ -44,6 +45,8 @@ class TabuSearch:
         collect_trace: bool = False,
         checkpoints: tuple[int, ...] = (),
         checkpoint_callback=None,
+        common_random_numbers: bool = False,
+        trace_components: bool = False,
     ) -> None:
         self.instance = instance
         self.constraints = constraints
@@ -68,18 +71,33 @@ class TabuSearch:
         self.trace: list[dict] = []
         self.checkpoints = frozenset(checkpoints)
         self.checkpoint_callback = checkpoint_callback
+        # Common random numbers (Embedded only): every SSP solve of an iteration,
+        # for the best-so-far solution and for each neighbor, uses the same
+        # student order, so that candidates are compared under equal noise.
+        self.common_random_numbers = common_random_numbers and embedded
+        self.trace_components = trace_components
 
     def solve(self, solution: Solution, *, max_iterations: int) -> str:
         """Replace X and Y with the best evaluated pair; return a stop reason."""
         self.search_calls += 1
-        current = _Candidate(solution.copy(), None, self.objective.evaluate(solution))
-        best = _Candidate(current.solution.copy(), current.move, current.objective)
+        current = _Candidate(
+            solution.copy(), None, self.objective.evaluate(solution), self._components()
+        )
+        best = _Candidate(
+            current.solution.copy(), current.move, current.objective, current.components
+        )
         iteration_count = 0
         stagnant_count = 0
         failed_count = 0
         start_time = time.time()
         while True:
-            neighborhood = self._generate_neighborhood(current, solution)
+            order_seed = None
+            if self.common_random_numbers:
+                order_seed = random.getrandbits(64)
+                incumbent = best.solution.copy()
+                value = self.sectioning.solve(incumbent, rng=random.Random(order_seed))
+                best = _Candidate(incumbent, best.move, value, self._components())
+            neighborhood = self._generate_neighborhood(current, solution, order_seed)
             selected = None
             while neighborhood:
                 neighborhood.sort(key=lambda candidate: candidate.objective)
@@ -99,7 +117,9 @@ class TabuSearch:
             current = selected
             solution.X = selected.solution.X
             if current.objective < best.objective:
-                best = _Candidate(current.solution.copy(), current.move, current.objective)
+                best = _Candidate(
+                    current.solution.copy(), current.move, current.objective, current.components
+                )
                 stagnant_count = 0
             else:
                 stagnant_count += 1
@@ -116,6 +136,13 @@ class TabuSearch:
                         "block_elapsed_seconds": time.time() - start_time,
                     }
                 )
+                if self.trace_components and current.components is not None:
+                    self.trace[-1].update(
+                        current_R_imb=current.components[0],
+                        current_R_dis=current.components[1],
+                        best_R_imb=best.components[0],
+                        best_R_dis=best.components[1],
+                    )
             if self.checkpoint_callback is not None and self.completed_iterations in self.checkpoints:
                 # The best pair at this point is exactly what a run capped at this
                 # many accepted moves returns; recording it consumes no random numbers.
@@ -136,7 +163,14 @@ class TabuSearch:
         solution.Y = best.solution.Y
         return reason
 
-    def _generate_neighborhood(self, current: _Candidate, working: Solution) -> list[_Candidate]:
+    def _components(self) -> tuple[float, float] | None:
+        if not self.trace_components:
+            return None
+        return getattr(self.objective, "last_components", None)
+
+    def _generate_neighborhood(
+        self, current: _Candidate, working: Solution, order_seed: int | None = None
+    ) -> list[_Candidate]:
         neighborhood = []
         moves = [
             (*key, block)
@@ -157,10 +191,15 @@ class TabuSearch:
             working.X = next_X
             if self.constraints.is_feasible(working.X):
                 if self.embedded:
-                    objective = self.sectioning.solve(working)
+                    rng = None if order_seed is None else random.Random(order_seed)
+                    objective = self.sectioning.solve(working, rng=rng)
                 else:
                     objective = self.objective.evaluate(working)
-                neighborhood.append(_Candidate(Solution(next_X, working.Y.copy()), move, objective))
+                neighborhood.append(
+                    _Candidate(
+                        Solution(next_X, working.Y.copy()), move, objective, self._components()
+                    )
+                )
         working.X = current.solution.X
         working.Y = current.solution.Y
         return neighborhood
