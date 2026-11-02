@@ -67,6 +67,7 @@ E2C_REAL_SEEDS = 10
 BASE_BUDGET = 2500
 # Rough single-process seconds per run, for planning only.
 SEC = {"emb_real": 110, "emb_syn": 45, "dec_real": 40, "dec_syn": 18, "small": 8}
+SMOKE = False  # machinery test only: tiny budgets, few instances; never for results
 
 
 def real_seeds() -> list[int]:
@@ -74,6 +75,8 @@ def real_seeds() -> list[int]:
 
 
 def budget(results: Path) -> int:
+    if SMOKE:
+        return 40
     path = results / "P3_pilot_decoupled" / "recommendation.json"
     recommended = 0
     if path.is_file():
@@ -88,8 +91,11 @@ def decision(results: Path) -> dict | None:
 
 def build(results: Path, data: Path, round_: int) -> list[Stage]:
     real = str(ROOT / "datasets" / "Real" / "real.json")
-    files = {g: sorted((data / g).glob("instance_*.json")) for g in GROUPS}
-    seeds = real_seeds()
+    files = {g: sorted((data / g).glob("instance_*.json"))[: 1 if SMOKE else None] for g in GROUPS}
+    seeds = real_seeds()[: 2 if SMOKE else None]
+    sec = "2" if SMOKE else "30"
+    pilot_budget = 60 if SMOKE else base.PILOT_BUDGET
+    pilot_points = [10, 20, 30, 40, 50] if SMOKE else base.PILOT_CHECKPOINTS
     stages: list[Stage] = []
 
     def syn(stage, group, path, kind, extra, runs, seconds, seed_args=None):
@@ -110,12 +116,12 @@ def build(results: Path, data: Path, round_: int) -> list[Stage]:
         pilot_dir = results / "02_pilot_convergence" / "instances"
         shards = []
         for group in GROUPS:
-            for index in range(1, base.PILOT_INSTANCES + 1):
+            for index in range(1, (1 if SMOKE else base.PILOT_INSTANCES) + 1):
                 path = pilot_dir / group / f"instance_{index:03d}.json"
                 shards.append(syn("P3", group, path, "iterations",
                                   ["--approaches", "Decoupled-50", "--alphas", "0.25", "1",
-                                   "--iteration-budgets", str(base.PILOT_BUDGET),
-                                   "--checkpoints", *map(str, base.PILOT_CHECKPOINTS), "--trace"],
+                                   "--iteration-budgets", str(pilot_budget),
+                                   "--checkpoints", *map(str, pilot_points), "--trace"],
                                   2, 2 * 25))
         stages.append(Stage("P3", "P3_pilot_decoupled", "Pilot: Decoupled-50 convergence", "iterations",
                             shards, "Decoupled-50, alpha 0.25/1, 3000 iterations, 30 pilot instances."))
@@ -125,16 +131,18 @@ def build(results: Path, data: Path, round_: int) -> list[Stage]:
             tag = "crn" if crn else "std"
             common = ["--approaches", "Embedded", "--alphas", "0.25", "1", "--save-solutions"] + REEVAL + flag
             for path in files["BASE"]:
-                s = syn("E1c", "BASE", path, "iterations", common + iters(BASE_BUDGET), 2, 2 * SEC["emb_syn"])
+                s = syn("E1c", "BASE", path, "iterations", common + iters(budget(results) if SMOKE else BASE_BUDGET),
+                        2, 2 * SEC["emb_syn"])
                 s.name += f"__{tag}_it"
                 shards.append(s)
-                s = syn("E1c", "BASE", path, "time", common + ["--time-budgets", "30"], 2, 2 * 32)
+                s = syn("E1c", "BASE", path, "time", common + ["--time-budgets", sec], 2, 2 * 32)
                 s.name += f"__{tag}_30s"
                 shards.append(s)
-            for seed in seeds[:E1C_REAL_SEEDS]:
-                shards.append(realshard("E1c", seed, "iterations", common + iters(BASE_BUDGET), 2,
+            for seed in seeds[:E1C_REAL_SEEDS]:  # noqa: B007
+                shards.append(realshard("E1c", seed, "iterations",
+                                        common + iters(budget(results) if SMOKE else BASE_BUDGET), 2,
                                         2 * SEC["emb_real"], f"__{tag}_it"))
-                shards.append(realshard("E1c", seed, "time", common + ["--time-budgets", "30"], 2, 2 * 32,
+                shards.append(realshard("E1c", seed, "time", common + ["--time-budgets", sec], 2, 2 * 32,
                                         f"__{tag}_30s"))
         stages.append(Stage("E1c", "E1c_crn", "Common random numbers vs. standard", "mixed", shards,
                             "Embedded, BASE (50) and real (20 seeds), alpha 0.25/1, 2500 iterations and 30 s, "
@@ -196,7 +204,7 @@ def build(results: Path, data: Path, round_: int) -> list[Stage]:
         for group in GROUPS:
             for path in files[group]:
                 s = syn("E3", group, path, "time", ["--approaches", "Sequential", "--alphas", "1",
-                                                    "--time-budgets", "30"] + save, 1, 32)
+                                                    "--time-budgets", sec] + save, 1, 32)
                 s.name += "__30s"
                 shards.append(s)
                 s = syn("E3", group, path, "iterations", ["--approaches", "Sequential", "--alphas", "1"]
@@ -205,7 +213,7 @@ def build(results: Path, data: Path, round_: int) -> list[Stage]:
                 shards.append(s)
         for seed in seeds:
             shards.append(realshard("E3", seed, "time", ["--approaches", "Sequential", "--alphas", "1",
-                                                         "--time-budgets", "30"] + save, 1, 32, "__30s"))
+                                                         "--time-budgets", sec] + save, 1, 32, "__30s"))
             shards.append(realshard("E3", seed, "iterations", ["--approaches", "Sequential", "--alphas", "1"]
                                     + save + iters(b, False), 1, SEC["small"], "__it"))
         stages.append(Stage("E3", "E3_sequential", "Sequential baseline", "mixed", shards,
@@ -263,7 +271,11 @@ def main(argv=None) -> int:
     parser.add_argument("--data", type=Path, default=ROOT / "work" / "Synthetic")
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--max-hours", type=float, default=8.0)
+    parser.add_argument("--smoke", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    if args.smoke:
+        global SMOKE
+        SMOKE = base.SMOKE = True
     results = args.results.resolve()
     results.mkdir(parents=True, exist_ok=True)
     data = args.data.resolve()
@@ -301,7 +313,8 @@ def main(argv=None) -> int:
         if not timing.is_file():
             log(results, "SSP timing (E6), single process. Keep the computer otherwise idle.")
             subprocess.run([PY, str(ROOT / "tools" / "ssp_timing.py"), "--data", str(data),
-                            "--out", str(timing.parent)], cwd=ROOT, check=True)
+                            "--out", str(timing.parent)]
+                           + (["--solves", "5", "--seconds", "1"] if SMOKE else []), cwd=ROOT, check=True)
         pilot = next(s for s in stages if s.key == "P3")
         if not (results / pilot.folder / "recommendation.json").is_file():
             if not run_shards(results, pilot.shards, workers, deadline):
