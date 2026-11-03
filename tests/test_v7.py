@@ -117,16 +117,20 @@ class SearchAdditionsTests(unittest.TestCase):
         self.assertLessEqual(proxy.evaluate(result.solution),
                              proxy.evaluate(result.initial_solution) + 1e-9)
 
-    def test_proxy_counts_shared_students_in_overlapping_sections(self):
+    def test_proxy_is_the_expected_number_of_conflicts(self):
         proxy = ProxyObjective(self.instance)
         X = solve(self.instance, SolveOptions(seed=1, iterations_per_search=1)).solution.X
-        expected = 0.0
         blocks = {}
         for (c, p, _l, b), v in X.items():
             if v:
-                blocks.setdefault((c, p), set()).add(b)
+                blocks.setdefault((c, p), []).append(b)
         courses = self.instance.courses
+        expected = 0.0
         for i in range(len(courses)):
+            n_i = sum(1 for s in self.instance.students if i in s.course_indices)
+            for p in range(len(courses[i].sections)):
+                lectures = blocks[i, p]
+                expected += n_i / len(courses[i].sections) * (len(lectures) - len(set(lectures)))
             for j in range(i + 1, len(courses)):
                 n = sum(1 for s in self.instance.students
                         if i in s.course_indices and j in s.course_indices)
@@ -134,8 +138,8 @@ class SearchAdditionsTests(unittest.TestCase):
                     continue
                 pairs = [(p, q) for p in range(len(courses[i].sections))
                          for q in range(len(courses[j].sections))]
-                overlap = sum(1 for p, q in pairs if blocks[i, p] & blocks[j, q])
-                expected += n * overlap / len(pairs)
+                shared = sum(len(set(blocks[i, p]) & set(blocks[j, q])) for p, q in pairs)
+                expected += n * shared / len(pairs)
         self.assertAlmostEqual(proxy.evaluate(Solution(X, {})), expected)
 
     def test_warm_start_and_component_trace(self):
