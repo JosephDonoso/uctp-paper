@@ -423,21 +423,31 @@ def noise_and_diagnostics(data: Path, out: Path) -> None:
     meta = pd.read_csv(data / "E2a_trajectories.csv")[["run_id", "instance", "alpha", "seed"]]
     tr = tr.merge(meta, on="run_id")
     plt = setup_plot(); bigger_fonts(plt)
-    fig, axes = plt.subplots(1, 2, figsize=(7.0, 3.1), sharex=False, sharey=False)
-    for ax, inst in zip(axes, ["real.json", "BASE"]):
+    fig, axes = plt.subplots(2, 2, figsize=(7.0, 4.8), sharex=True)
+    for j, inst in enumerate(["real.json", "BASE"]):
         sub = tr[tr.instance == "real.json"] if inst == "real.json" else tr[tr.instance != "real.json"]
-        for (rid, al), x in sub.groupby(["run_id", "alpha"]):
-            x = x.sort_values("iteration")
-            ax.plot(x.best_R_imb, x.best_R_dis, color=COLORS["Embedded"] if al == 0.25 else COLORS["Decoupled-50"],
-                    linewidth=0.8, alpha=0.8)
-            ax.scatter(x.best_R_imb.iloc[-1], x.best_R_dis.iloc[-1], s=10,
-                       color=COLORS["Embedded"] if al == 0.25 else COLORS["Decoupled-50"], zorder=3)
-        ax.set_xscale("log"); ax.set_yscale("log"); plain_log(ax, "x"); plain_log(ax, "y")
-        ax.set_xlabel(PLOT["R_imb"] + " (best so far)"); ax.set_ylabel(PLOT["R_dis"] + " (best so far)")
-        ax.set_title("Real instance (5 seeds)" if inst == "real.json" else "BASE (5 instances)"); ax.grid(True)
-    from matplotlib.lines import Line2D
-    axes[0].legend([Line2D([0], [0], color=COLORS["Embedded"]), Line2D([0], [0], color=COLORS["Decoupled-50"])],
-                   [r"$\alpha=0.25$", r"$\alpha=1$"], frameon=False)
+        for al in [0.25, 1.0]:
+            color = COLORS["Embedded"] if al == 0.25 else COLORS["Decoupled-50"]
+            x = sub[sub.alpha == al]
+            for i, comp in enumerate(["best_R_imb", "best_R_dis"]):
+                # Rolling median over 25 iterations per run removes the iteration-to-iteration
+                # fluctuation of the re-solved incumbent; then mean and range across runs.
+                runs = x.pivot_table(index="iteration", columns="run_id", values=comp).sort_index()
+                runs = runs.rolling(25, min_periods=1).median()
+                ax = axes[i, j]
+                ax.fill_between(runs.index, runs.min(axis=1), runs.max(axis=1), color=color, alpha=0.18, linewidth=0)
+                ax.plot(runs.index, runs.mean(axis=1), color=color, linewidth=1.6,
+                        label=rf"$\alpha={al:g}$")
+        for i, comp in enumerate(["R_imb", "R_dis"]):
+            ax = axes[i, j]
+            ax.set_xscale("log"); ax.set_yscale("log"); plain_log(ax, "y"); ax.grid(True)
+            if j == 0:
+                ax.set_ylabel(PLOT[comp] + " of best solution")
+            if i == 0:
+                ax.set_title("Real instance (5 seeds)" if inst == "real.json" else "BASE (5 instances)")
+            else:
+                ax.set_xlabel("Iteration")
+    axes[0, 0].legend(frameon=False)
     fig.tight_layout(); fig.savefig(out / "figures/e2_trajectories.pdf"); plt.close(fig)
     # E6 and P3.
     t = json.loads((data / "ssp_timing.json").read_text(encoding="utf-8"))
