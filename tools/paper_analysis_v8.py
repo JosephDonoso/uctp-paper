@@ -482,6 +482,32 @@ def noise_and_diagnostics(data: Path, out: Path) -> None:
     NUM["p3"] = p3n
 
 
+# ----------------------------------------------------------------------------- E3 by budget
+def sequential_budgets(out: Path, seq: pd.DataFrame) -> None:
+    """Sequential at a nominal 30 s and at 2500 iterations, by group (re-evaluated values)."""
+    s = finals(seq).copy()
+    s["grp"] = s.group
+    rows, num = [], {}
+    order = ["F_ref", "R_imb", "R_dis", "conflicts"]
+    for kind, label in [("seconds", "30 s"), ("iterations", "2500 it.")]:
+        for g in GROUPS + ["Real"]:
+            x = s[(s.budget_kind == kind) & (s.grp == g)]
+            rows.append(f"{g} & {label} & {len(x)} & " + " & ".join(f"{x[REE[m]].mean():.{dec(m)}f}" for m in order)
+                        + f" & {x.completed_iterations.mean():.0f} & {x.optimizer_cpu_seconds.mean():.1f} \\\\")
+        syn = s[(s.budget_kind == kind) & (s.grp != "Real")]
+        real_ = s[(s.budget_kind == kind) & (s.grp == "Real")]
+        num[kind] = dict(synthetic={m: round(float(syn[REE[m]].mean()), 3) for m in order}
+                         | dict(iterations=round(float(syn.completed_iterations.mean()), 0),
+                                cpu=round(float(syn.optimizer_cpu_seconds.mean()), 1)),
+                         real={m: round(float(real_[REE[m]].mean()), 3) for m in order}
+                         | dict(iterations=round(float(real_.completed_iterations.mean()), 0),
+                                cpu=round(float(real_.optimizer_cpu_seconds.mean()), 1)))
+    write(out / "tables/sequential_budgets.tex", tabular(
+        "llrrrrrrr", [r"Group & Budget & $n$ & " + " & ".join(TEX[m] for m in order)
+                      + r" & Iterations & CPU (s) \\"], rows))
+    NUM["sequential_budgets"] = num
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--data", type=Path, required=True)
@@ -493,6 +519,7 @@ def main() -> None:
     noise_and_diagnostics(args.data, args.out)
     real(args.data, args.out, seq)
     synthetic(args.data, args.out, seq)
+    sequential_budgets(args.out, seq)
     (args.out / "numbers.json").write_text(json.dumps(NUM, indent=1, default=float), encoding="utf-8")
     print(f"Wrote tables, figures and numbers.json to {args.out}")
 
