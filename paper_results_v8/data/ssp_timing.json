@@ -1,0 +1,126 @@
+{
+  "base": [
+    {
+      "instance": "instance_001.json",
+      "solves": 200,
+      "mean_ms": 0.37760349776363,
+      "p95_ms": 0.4582999972626567,
+      "students": 500
+    },
+    {
+      "instance": "instance_002.json",
+      "solves": 200,
+      "mean_ms": 0.32518299733055755,
+      "p95_ms": 0.3470999654382467,
+      "students": 500
+    },
+    {
+      "instance": "instance_003.json",
+      "solves": 200,
+      "mean_ms": 0.3541710032732226,
+      "p95_ms": 0.3660000511445105,
+      "students": 500
+    },
+    {
+      "instance": "instance_004.json",
+      "solves": 200,
+      "mean_ms": 0.3343179979128763,
+      "p95_ms": 0.40119996992871165,
+      "students": 500
+    },
+    {
+      "instance": "instance_005.json",
+      "solves": 200,
+      "mean_ms": 0.38558600295800716,
+      "p95_ms": 0.4031999851576984,
+      "students": 500
+    },
+    {
+      "instance": "instance_006.json",
+      "solves": 200,
+      "mean_ms": 0.4037595013505779,
+      "p95_ms": 0.4159999662078917,
+      "students": 500
+    },
+    {
+      "instance": "instance_007.json",
+      "solves": 200,
+      "mean_ms": 0.37168200011365116,
+      "p95_ms": 0.39760000072419643,
+      "students": 500
+    },
+    {
+      "instance": "instance_008.json",
+      "solves": 200,
+      "mean_ms": 0.417747997562401,
+      "p95_ms": 0.44430000707507133,
+      "students": 500
+    },
+    {
+      "instance": "instance_009.json",
+      "solves": 200,
+      "mean_ms": 0.35694750084076077,
+      "p95_ms": 0.37379999412223697,
+      "students": 500
+    },
+    {
+      "instance": "instance_010.json",
+      "solves": 200,
+      "mean_ms": 0.37800350168254226,
+      "p95_ms": 0.39360002847388387,
+      "students": 500
+    }
+  ],
+  "real": {
+    "initial_cm": {
+      "solves": 200,
+      "mean_ms": 1.0387314989930019,
+      "p95_ms": 1.0783000034280121,
+      "students": 1209
+    },
+    "observed": {
+      "solves": 200,
+      "mean_ms": 1.0295884974766523,
+      "p95_ms": 1.0904999799095094,
+      "students": 1209
+    }
+  },
+  "scaling": [
+    {
+      "fraction": 0.25,
+      "iterations_30s": 1519,
+      "ssp_calls_30s": 35910,
+      "solves": 200,
+      "mean_ms": 0.37684899929445237,
+      "p95_ms": 0.4461999633349478,
+      "students": 302
+    },
+    {
+      "fraction": 0.5,
+      "iterations_30s": 1093,
+      "ssp_calls_30s": 25813,
+      "solves": 200,
+      "mean_ms": 0.6064539996441454,
+      "p95_ms": 0.7576999487355351,
+      "students": 604
+    },
+    {
+      "fraction": 0.75,
+      "iterations_30s": 948,
+      "ssp_calls_30s": 22293,
+      "solves": 200,
+      "mean_ms": 0.9804179996717721,
+      "p95_ms": 1.444400055333972,
+      "students": 907
+    },
+    {
+      "fraction": 1.0,
+      "iterations_30s": 797,
+      "ssp_calls_30s": 18867,
+      "solves": 200,
+      "mean_ms": 1.0620625031879172,
+      "p95_ms": 1.1081999982707202,
+      "students": 1209
+    }
+  ]
+}

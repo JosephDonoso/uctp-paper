@@ -148,3 +148,9 @@ Re-evaluation of published runs without re-running them:
 `tools/real_observed.py` rebuilds the implemented timetable X_real and the
 recorded enrollment from the source workbook (it reproduces the published
 observed baseline exactly).
+
+The Sequential runs of stage E3 were repeated after correcting the proxy
+(commit 14847c4): the old `results_v7/E3_sequential` was set aside and round 2
+was run again, which only re-runs E3. The flattened records of all v7 stages
+and the commands that regenerate the v8 manuscript's tables and figures are
+described in [`paper_results_v8/README.md`](../paper_results_v8/README.md).
