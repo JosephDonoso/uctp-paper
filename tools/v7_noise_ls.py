@@ -56,6 +56,9 @@ def main(argv=None):
     parser.add_argument("--seeds", type=Path, required=True, help="SEEDS.json of the campaigns.")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--workers", type=int, default=2)
+    parser.add_argument("--partial-stage", default="D_real_30s",
+                        help="Stage whose final alpha-0.25 timetables are evaluated under partial "
+                             "adjustment (e.g. E5a_real_converged for the 2500-iteration runs).")
     args = parser.parse_args(argv)
     rows = _load(args.solutions)
     seeds = json.loads(args.seeds.read_text(encoding="utf-8"))
@@ -92,8 +95,10 @@ def main(argv=None):
     print(f"E4b: p* = {p_star} (R_imb {best['R_imb_mean']:.3f})", flush=True)
     jobs = [(f"{row['approach']} a=0.25 seed {row['seed']}", "run", row, 0.25, 50,
              f"partial:{row['run_id']}", True, p_star)
-            for row in rows if row["stage"] == "D_real_30s" and row["alpha"] == 0.25]
-    jobs.append(("X_real (observed timetable)", "real_observed", None, 0.25, 50, "partial:xreal:star", True, p_star))
+            for row in rows if row["stage"] == args.partial_stage and row["alpha"] == 0.25]
+    # Same key as the calibration row for p*, so the institutional timetable is evaluated
+    # with the same orders and adjustment draws as in e4b_calibration.csv.
+    jobs.append(("X_real (observed timetable)", "real_observed", None, 0.25, 50, f"partial:xreal:{p_star}", True, p_star))
     with ProcessPoolExecutor(args.workers, initializer=rs._init, initargs=(catalog,)) as pool:
         partial = list(pool.map(_task, jobs))
     _write(args.out / "e4b_partial.csv", partial)
