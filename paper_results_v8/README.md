@@ -39,3 +39,31 @@ python tools/paper_analysis.py --results work/results_reeval --baselines paper_r
 
 The persistence tables across budgets (cm_by_budget, iteration steps) use the recorded
 values of `paper_results/` (`python tools/paper_analysis.py --results paper_results`).
+
+## v9 manuscript (C&OR submission)
+
+The v9 manuscript adds four supplementary tables computed from the same v8 records, with no
+new runs, by `tools/revision_checks.py`:
+
+```
+python tools/revision_checks.py --data paper_results_v8/data --out paper_out_v9
+```
+
+| Table | Content |
+|---|---|
+| `equal_cpu.tex` | Embedded at its 1000-iteration checkpoint against Decoupled-50 after 2500 iterations (comparable optimizer CPU time) |
+| `noise_converged.tex` | Coefficients of variation over the 50 re-evaluation orders of the final 2500-iteration timetables |
+| `real_paired.tex` | Real instance at alpha 0.25: Embedded minus Decoupled-50, paired by seed (paired t-test and sign test) |
+| `partial_final.tex` | Final alpha-0.25 timetables under partial adjustment (p = 0.6); the institutional row is the calibration row |
+
+The script also prints every number of these tables cited in the text.
+
+The v9 manuscript no longer reports repeated-measures ANOVA: the factorial tables
+(`conv_factorial_*`, `factorial_Decoupled_*`, `factorial_approaches_*`) that
+`paper_analysis.py` and `paper_analysis_v8.py` still write are not used. All reported tests
+are the planned paired contrasts (Holm-adjusted t-tests with the centered bootstrap check)
+and the sign tests of the initialization experiments.
+
+Two optional runs that would move the remaining earlier-protocol results to the main protocol
+(LS ablation at 2500 iterations with common random numbers, and partial adjustment on the E5a
+timetables) are scripted in `tools/run_v9_pending.ps1`.

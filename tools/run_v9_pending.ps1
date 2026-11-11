@@ -1,6 +1,6 @@
 # Pending runs of the v9 revision (run from the repository root, PowerShell).
 #
-#   .\tools\run_v9_pending.ps1 -Base "C:\ruta\datasets\Synthetic\BASE" -ResultsV7 "results_v7" -Seeds "results_v7\SEEDS.json"
+#   .\tools\run_v9_pending.ps1 -Base "C:\ruta\datasets\Synthetic\BASE" -ResultsV7 "results_v7" -Seeds "paper_results\SEEDS.json"
 #
 # 1. LS ablation under the main protocol (2500 iterations, common random numbers, checkpoints,
 #    50 re-evaluation orders), on the real instance (50 seeds) and on BASE (seed 703).
