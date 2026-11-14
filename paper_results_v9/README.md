@@ -12,5 +12,14 @@ sequential script.
 | `e4b_calibration.csv` | Partial adjustment: calibration of p on the institutional timetable | `tools/v7_noise_ls.py --partial-stage E5a_real_converged` |
 | `e4b_partial.csv` | Final alpha-0.25 timetables of E5a (2500 iterations) under partial adjustment p = 0.6; the institutional row uses the same draws as the calibration row | same command |
 
-The runs with LS reproduce the E5a and E5b results exactly (same seeds): real instance at
-alpha 0.25, re-evaluated F_ref 0.279; BASE, 0.491.
+The runs with LS reproduce the corresponding E5a and E5b runs (same seeds): the final
+conflict counts coincide in all 200 runs. Their re-evaluated values differ slightly from
+those of E5a and E5b because the 50 re-evaluation orders are drawn independently (real
+instance at alpha 0.25: F_ref 0.279 in both; BASE at alpha 1: 2.462 here against 2.457).
+
+The v9 tables `ls_crossed.tex` and `partial_final.tex` are generated from these records,
+together with the other v9 tables, by
+
+```
+python tools/revision_checks.py --data paper_results_v8/data --data-v9 paper_results_v9/data --out paper_out_v9
+```

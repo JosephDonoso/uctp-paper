@@ -46,7 +46,7 @@ The v9 manuscript adds four supplementary tables computed from the same v8 recor
 new runs, by `tools/revision_checks.py`:
 
 ```
-python tools/revision_checks.py --data paper_results_v8/data --out paper_out_v9
+python tools/revision_checks.py --data paper_results_v8/data --data-v9 paper_results_v9/data --out paper_out_v9
 ```
 
 | Table | Content |

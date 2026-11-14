@@ -10,8 +10,11 @@
 3. real_paired.tex      Real instance at alpha 0.25: Embedded minus Decoupled-50, paired
                         by seed, with paired t-test and exact sign test (ties excluded).
 
+5. ls_crossed.tex       LS ablation at 2500 iterations with CRN, each final timetable evaluated
+                        with and without LS (requires --data-v9).
+
 Usage:
-    python tools/revision_checks.py --data paper_results_v8/data --out paper_out_v9
+    python tools/revision_checks.py --data paper_results_v8/data --data-v9 paper_results_v9/data --out paper_out_v9
 The script also prints every number cited in the text.
 """
 
@@ -125,16 +128,45 @@ def partial_final(data: Path, out: Path) -> None:
     write(out / "tables/partial_final.tex", lines)
 
 
+def ls_crossed(data: Path, out: Path) -> None:
+    """Crossed evaluation of the LS ablation (v9: 2500 iterations, CRN)."""
+    rows = pd.concat([pd.read_csv(data / "reeval_ls_on.csv"), pd.read_csv(data / "reeval_ls_off.csv")])
+    rows["set"] = rows.group.astype(str)
+    lines = [r"\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lclll@{}}", r"\hline",
+             r"Instance & $\alpha$ & \shortstack{Optimized\\with LS} & "
+             r"\shortstack{Evaluated with LS\\$F_{\mathrm{ref}}$ / $R_{\mathit{imb}}$ / $R_{\mathit{dis}}$ / conflicts} & "
+             r"\shortstack{Evaluated without LS\\$F_{\mathrm{ref}}$ / $R_{\mathit{imb}}$ / $R_{\mathit{dis}}$ / conflicts} \\",
+             r"\hline"]
+    for group in ("BASE", "Real"):
+        for alpha in (0.25, 1.0):
+            for opt in (True, False):
+                cells = []
+                for mode in ("on", "off"):
+                    x = rows[(rows.set == group) & (rows.alpha == alpha) & (rows.local_search == opt) & (rows.eval_mode == mode)]
+                    cells.append(f"{x.F_ref_mean.mean():.3f} / {x.R_imb_mean.mean():.3f} / {x.R_dis_mean.mean():.3f} / {x.conflicts_mean.mean():.1f}")
+                    print(f"LS crossed {group} a={alpha:g} optimized {'with' if opt else 'without'} LS, eval {mode}: "
+                          f"F_ref {x.F_ref_mean.mean():.3f} (n={len(x)})")
+                lines.append(f"{group} & {alpha:g} & {'With' if opt else 'Without'} & {cells[0]} & {cells[1]} \\\\")
+    lines += [r"\hline", r"\end{tabular*}"]
+    write(out / "tables/ls_crossed.tex", lines)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--data", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--checkpoint", default="1000")
+    parser.add_argument("--data-v9", type=Path, default=None,
+                        help="paper_results_v9/data: LS ablation and partial adjustment at 2500 iterations.")
     args = parser.parse_args()
     equal_cpu(args.data, args.out, args.checkpoint)
     noise(args.data, args.out)
     real_paired(args.data, args.out)
-    partial_final(args.data, args.out)
+    if args.data_v9 is not None:
+        partial_final(args.data_v9, args.out)
+        ls_crossed(args.data_v9, args.out)
+    else:
+        partial_final(args.data, args.out)
 
 
 if __name__ == "__main__":
